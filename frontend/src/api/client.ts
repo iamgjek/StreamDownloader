@@ -30,6 +30,8 @@ export const api = {
     request<{ job_id: number }>('/download', { method: 'POST', body: JSON.stringify({ url, download_type }) }),
   downloadStatus: (jobId: number) =>
     request<{ job_id: number; status: string; progress: number; message: string | null; title: string | null }>(`/download/status/${jobId}`),
+  downloadCancel: (jobId: number) =>
+    request<{ ok: boolean }>(`/download/cancel/${jobId}`, { method: 'POST' }),
   downloadResultUrl: (jobId: number) => {
     const t = getToken()
     return `${API}/download/result/${jobId}${t ? `?token=${encodeURIComponent(t)}` : ''}`

@@ -57,6 +57,19 @@ export default function Download() {
     }
   }
 
+  const cancelDownload = async () => {
+    if (jobId == null) return
+    try {
+      await api.downloadCancel(jobId)
+      setStatus('cancelled')
+      setMessage('已取消')
+      setJobId(null)
+      loadHistory(1)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '取消失敗')
+    }
+  }
+
   // Poll status when we have a job
   useEffect(() => {
     if (jobId == null) return
@@ -67,6 +80,11 @@ export default function Download() {
         setProgress(s.progress)
         setMessage(s.message || '')
         if (s.title) setTitle(s.title)
+        if (s.status === 'cancelled') {
+          setJobId(null)
+          loadHistory(1)
+          return
+        }
         if (s.status === 'done') {
           setJobId(null)
           loadHistory(1)
@@ -108,7 +126,8 @@ export default function Download() {
     return () => clearInterval(t)
   }, [jobId, message])
 
-  const isLoading = jobId != null && status !== 'done' && status !== 'error'
+  const isLoading = jobId != null && status !== 'done' && status !== 'error' && status !== 'cancelled'
+  const canCancel = jobId != null && (status === 'pending' || status === 'downloading')
 
   return (
     <div className={styles.page}>
@@ -130,15 +149,27 @@ export default function Download() {
           aria-describedby={error ? 'download-error' : undefined}
         />
 
-        <button
-          type="button"
-          className={styles.btn}
-          onClick={startDownload}
-          disabled={isLoading}
-          aria-busy={isLoading}
-        >
-          {isLoading ? '下載中…' : '開始下載'}
-        </button>
+        <div className={styles.btnRow}>
+          <button
+            type="button"
+            className={styles.btn}
+            onClick={startDownload}
+            disabled={isLoading}
+            aria-busy={isLoading}
+          >
+            {isLoading ? '下載中…' : '開始下載'}
+          </button>
+          {canCancel && (
+            <button
+              type="button"
+              className={styles.btnCancel}
+              onClick={cancelDownload}
+              aria-label="中斷下載"
+            >
+              中斷下載
+            </button>
+          )}
+        </div>
 
         {isLoading && (
           <div className={styles.progressUI}>
@@ -146,6 +177,7 @@ export default function Download() {
               {status === 'pending' && '排隊中'}
               {status === 'downloading' && '下載中'}
               {status === 'done' && '完成'}
+              {status === 'cancelled' && '已取消'}
             </div>
             <div className={styles.progressBarWrap}>
               <div className={styles.progressBar}>
@@ -186,7 +218,7 @@ export default function Download() {
                       <td className={styles.cellUrl}>{item.url}</td>
                       <td className={styles.cellTitle}>{item.title || '—'}</td>
                       <td className={styles.cellDesc}>{item.og_description || '—'}</td>
-                      <td>{item.status}</td>
+                      <td>{item.status === 'done' ? '完成' : item.status === 'error' ? '失敗' : item.status === 'cancelled' ? '已取消' : item.status === 'downloading' ? '下載中' : item.status}</td>
                       <td className={styles.cellTime}>{new Date(item.created_at).toLocaleString('zh-TW')}</td>
                     </tr>
                   ))}

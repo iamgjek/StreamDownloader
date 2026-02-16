@@ -222,10 +222,16 @@ def login(data: UserLogin, db: Session = Depends(get_db)):
 
 
 def _run_download_job(job_id: int, url: str, dtype: str, user_id: int) -> None:
+    from app.download_service import DownloadCancelled
+
     db = SessionLocal()
     try:
         log = db.query(DownloadLog).filter(DownloadLog.id == job_id).first()
-        if not log or log.status != "pending":
+        if not log:
+            return
+        if log.status == "cancelled":
+            return
+        if log.status != "pending":
             return
         log.status = "downloading"
         log.progress = 0
@@ -239,12 +245,25 @@ def _run_download_job(job_id: int, url: str, dtype: str, user_id: int) -> None:
                 log.message = message
                 db.commit()
 
+        def cancelled_check() -> bool:
+            log = db.query(DownloadLog).filter(DownloadLog.id == job_id).first()
+            return log is not None and log.status == "cancelled"
+
         try:
             tmpdir, title, video_path, sub_paths, og_title, og_description = download_video_with_subs(
                 url,
                 merge_format="mkv",
                 progress_callback=progress_cb,
+                cancelled_check=cancelled_check,
             )
+        except DownloadCancelled:
+            log = db.query(DownloadLog).filter(DownloadLog.id == job_id).first()
+            if log:
+                log.status = "cancelled"
+                log.message = "已取消"
+                log.completed_at = datetime.utcnow()
+                db.commit()
+            return
         except Exception as e:
             logger.exception("下載失敗 job_id=%s: %s", job_id, e)
             log = db.query(DownloadLog).filter(DownloadLog.id == job_id).first()
@@ -362,6 +381,27 @@ def download_status(
         message=log.message,
         title=log.title,
     )
+
+
+@api.post("/download/cancel/{job_id}")
+def download_cancel(
+    job_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """中斷排程中或下載中的任務（僅限自己的任務）。"""
+    log = db.query(DownloadLog).filter(DownloadLog.id == job_id).first()
+    if not log:
+        raise HTTPException(status_code=404, detail="找不到此下載任務")
+    if log.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="無權限取消此任務")
+    if log.status not in ("pending", "downloading"):
+        raise HTTPException(status_code=400, detail="僅能取消排隊中或下載中的任務")
+    log.status = "cancelled"
+    log.message = "已取消"
+    log.completed_at = datetime.utcnow()
+    db.commit()
+    return {"ok": True}
 
 
 @api.get("/downloads/history", response_model=DownloadHistoryResponse)

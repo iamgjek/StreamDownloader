@@ -6,6 +6,11 @@ import gzip
 from pathlib import Path
 from typing import Callable
 from urllib.parse import urlparse
+
+
+class DownloadCancelled(Exception):
+    """使用者已取消下載。"""
+    pass
 from urllib.request import Request, urlopen
 
 # 停用 yt-dlp 外掛，避免與外掛的 load_plugins() 簽名不相容導致崩潰
@@ -253,22 +258,25 @@ VIDEO_EXTS = {".mp4", ".mkv", ".webm", ".avi", ".mov", ".flv", ".m4a"}
 SUB_EXTS = {".srt", ".vtt", ".ass", ".ssa"}
 
 
-def _progress_hook_factory(callback):
-    """建立 yt-dlp progress_hook，callback(percent: int, message: str)."""
-    if not callback:
+def _progress_hook_factory(callback, cancelled_check: Callable[[], bool] | None = None):
+    """建立 yt-dlp progress_hook；若 cancelled_check 回傳 True 則拋出 DownloadCancelled。"""
+    if not callback and not cancelled_check:
         return None
 
     def progress_hook(d):
-        if d.get("status") == "downloading":
-            if d.get("total_bytes"):
-                pct = min(100, int(d.get("downloaded_bytes", 0) * 100 / d["total_bytes"]))
-                msg = d.get("_percent_str") or f"{pct}%"
-            else:
-                pct = 0
-                msg = d.get("_percent_str") or "下載中…"
-            callback(pct, msg)
-        elif d.get("status") == "finished":
-            callback(100, "合併檔案中…")
+        if cancelled_check and cancelled_check():
+            raise DownloadCancelled()
+        if callback:
+            if d.get("status") == "downloading":
+                if d.get("total_bytes"):
+                    pct = min(100, int(d.get("downloaded_bytes", 0) * 100 / d["total_bytes"]))
+                    msg = d.get("_percent_str") or f"{pct}%"
+                else:
+                    pct = 0
+                    msg = d.get("_percent_str") or "下載中…"
+                callback(pct, msg)
+            elif d.get("status") == "finished":
+                callback(100, "合併檔案中…")
     return progress_hook
 
 
@@ -292,16 +300,18 @@ def download_video_with_subs(
     *,
     merge_format: str = "mkv",
     progress_callback: Callable[[int, str], None] | None = None,
+    cancelled_check: Callable[[], bool] | None = None,
 ) -> tuple[Path, str, Path | None, list[Path], str | None, str | None]:
     """
     下載影片與字幕，回傳 (暫存目錄, 標題, 影片路徑或 None, 字幕檔列表, og_title, og_description)。
     支援 YouTube、missav.ai（本機解析 m3u8）及多數 yt-dlp 內建網站。
     progress_callback(percent: int, message: str) 用於即時進度。
+    cancelled_check() 若回傳 True 會拋出 DownloadCancelled，用於中斷下載。
     """
     tmpdir = Path(tempfile.mkdtemp())
     out_tmpl = str(tmpdir / "%(title)s.%(ext)s")
     sub_tmpl = str(tmpdir / "%(title)s.%(lang)s.%(ext)s")
-    progress_hook = _progress_hook_factory(progress_callback)
+    progress_hook = _progress_hook_factory(progress_callback, cancelled_check)
 
     # 使用完整瀏覽器標頭與 Referer，降低 403 Forbidden 機率
     origin = _origin_from_url(url)
