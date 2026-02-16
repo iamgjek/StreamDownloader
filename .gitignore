@@ -3,3 +3,4 @@ backend/app/__pycache__
 backend/venv
 *.db
 backend/users.db
+backend/users.db

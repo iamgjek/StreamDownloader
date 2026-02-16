@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
-from app.database import get_db, engine, Base, SessionLocal
+from app.database import get_db, engine, Base, SessionLocal, IS_SQLITE
 from app.models import User, DownloadLog
 from app.schemas import (
     UserCreate,
@@ -75,15 +75,28 @@ def _seed_admin(db: Session) -> None:
     logger.info("預設管理員已建立: id=admin, password=%s", ADMIN_PASSWORD)
 
 
+def _get_column_names(conn, table_name: str) -> list[str]:
+    """取得指定資料表的所有欄位名稱（同時支援 SQLite 與 PostgreSQL）。"""
+    from sqlalchemy import text, inspect as sa_inspect
+    if IS_SQLITE:
+        r = conn.execute(text(f"PRAGMA table_info({table_name})"))
+        return [row[1] for row in r]
+    else:
+        inspector = sa_inspect(engine)
+        return [c["name"] for c in inspector.get_columns(table_name)]
+
+
 def _migrate_add_is_admin():
     """若舊資料庫沒有 is_admin 欄位則新增。"""
     from sqlalchemy import text
     with engine.connect() as conn:
         try:
-            r = conn.execute(text("PRAGMA table_info(users)"))
-            cols = [row[1] for row in r]
+            cols = _get_column_names(conn, "users")
             if "is_admin" not in cols:
-                conn.execute(text("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0"))
+                if IS_SQLITE:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0"))
+                else:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE"))
                 conn.commit()
         except Exception:
             pass
@@ -94,8 +107,7 @@ def _migrate_download_log_og():
     from sqlalchemy import text
     with engine.connect() as conn:
         try:
-            r = conn.execute(text("PRAGMA table_info(download_logs)"))
-            cols = [row[1] for row in r]
+            cols = _get_column_names(conn, "download_logs")
             if "og_title" not in cols:
                 conn.execute(text("ALTER TABLE download_logs ADD COLUMN og_title VARCHAR(500)"))
             if "og_description" not in cols:

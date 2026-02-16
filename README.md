@@ -17,7 +17,7 @@
 
 ## 環境需求
 
-- **Python** 3.10～3.12（**不建議 3.14**：目前 SQLAlchemy 與 Python 3.14 可能不相容，會導致後端啟動失敗；若系統預設為 3.14，可安裝 `brew install python@3.12` 後由 `./scripts/dev.sh` 自動選用）
+- **Python** 3.10～3.12（**不建議 3.14**：部分套件可能尚未完全支援，若系統預設為 3.14，可安裝 `brew install python@3.12` 後由 `./scripts/dev.sh` 自動選用）
 - **Node.js** 18+
 - **ffmpeg**（選用）：下載需合併影音格式的影片時（如多數 YouTube）會用到；未安裝會出現「ffmpeg is not installed」。macOS 可 `brew install ffmpeg`。
 
@@ -70,7 +70,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 - **API**：`http://127.0.0.1:8000`
-- **資料庫**：`backend/users.db`（SQLite）
+- **資料庫**：本機開發預設使用 `backend/users.db`（SQLite）；部署時使用 PostgreSQL（透過 `DATABASE_URL` 環境變數）
 
 #### 2. 前端
 
@@ -133,7 +133,7 @@ yt-dlp 合併影音格式時需要 **ffmpeg**。請在本機安裝後再下載�
 
 | 層級 | 技術與說明 |
 |------|------------|
-| **後端** | FastAPI、SQLAlchemy（SQLite）、JWT 登入；yt-dlp 下載影片（.mkv）與字幕；下載採 job 制、即時回報進度；missav 由本機解析 m3u8 後以 yt-dlp 下載 |
+| **後端** | FastAPI、SQLAlchemy（PostgreSQL／SQLite）、JWT 登入；yt-dlp 下載影片（.mkv）與字幕；下載採 job 制、即時回報進度；missav 由本機解析 m3u8 後以 yt-dlp 下載 |
 | **前端** | React 18、TypeScript、Vite、深色風格；專案名稱 Stream Downloader；首頁含介紹與操作說明 |
 | **管理** | `/dashboard` 僅管理員可進入，可查看會員與下載紀錄 |
 
@@ -142,22 +142,22 @@ yt-dlp 合併影音格式時需要 **ffmpeg**。請在本機安裝後再下載�
 ## 部署（前端 Vercel + 後端 Render）
 
 - **前端**：部署至 [Vercel](https://vercel.com)（靜態站點）。
-- **後端**：部署至 [Render](https://render.com)（常駐 Web Service，支援 SQLite 與 yt-dlp 長時間下載）。
+- **後端**：部署至 [Render](https://render.com)（常駐 Web Service + PostgreSQL 資料庫）。
 
 ### 後端（Render）步驟
 
 1. 前往 [Render](https://render.com) 登入，點 **New → Blueprint**，選擇「連接到 Git 倉庫」並選定本專案。
-2. Render 會讀取專案根目錄的 **`render.yaml`**，自動建立一個 **Web Service**（名稱如 `stream-downloader-api`）。
-3. 在該 Service 的 **Environment** 中新增環境變數（必填建議先設）：
+2. Render 會讀取專案根目錄的 **`render.yaml`**，自動建立一個 **Web Service**（`stream-downloader-api`）與一個 **PostgreSQL 資料庫**（`stream-downloader-db`），並自動將 `DATABASE_URL` 注入服務環境變數。
+3. 在該 Service 的 **Environment** 中新增以下環境變數（必填建議先設）：
    - **SECRET_KEY**：JWT 簽章用，正式環境必改。可於本機產生一組隨機字串後貼上，例如：
      - 終端機執行：`openssl rand -hex 32`，得到類似 `a1b2c3d4e5f6...` 的 64 字元十六進位字串，整串複製為 SECRET_KEY 的值。
      - 或：`python3 -c "import secrets; print(secrets.token_hex(32))"`，同樣將輸出整串設為 SECRET_KEY。
    - **CORS_ORIGINS**：前端網址，例如 `https://your-app.vercel.app`（與 Vercel 前端搭配時必設）。
    - **OPENSUBTITLES_API_KEY**：（選用）字幕搜尋用。
-   - **DATABASE_URL**：（選用）若在 Render 掛載 Persistent Disk 於 `/data`，可設 `sqlite:////data/users.db` 以持久化資料庫；未設則使用預設路徑（重啟或重新部署後資料可能重置）。
+   - **DATABASE_URL**：由 Blueprint 自動從 PostgreSQL 注入，通常不需手動設定。
 4. 部署完成後，後端網址為 `https://<你的服務名稱>.onrender.com`，API 基礎路徑為 **`https://<服務名稱>.onrender.com/api`**（前端 `VITE_API_BASE` 須指向此網址並含 `/api`）。
 
-**注意**：Render 免費方案服務在一段時間無請求後會進入休眠，首次喚醒可能較慢；若需常駐可考慮付費方案。
+**注意**：Render 免費方案的 PostgreSQL 資料庫有 90 天期限，屆時需手動重建或升級付費方案。服務在一段時間無請求後會進入休眠，首次喚醒可能較慢。
 
 ### 前端（Vercel）步驟
 
