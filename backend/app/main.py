@@ -114,9 +114,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Stream Downloader API", lifespan=lifespan)
 
+_default_origins = [
+    "http://localhost:5173", "http://127.0.0.1:5173",
+    "http://localhost:3000", "http://127.0.0.1:3000",
+]
+_cors_origins = os.getenv("CORS_ORIGINS")
+if _cors_origins:
+    _default_origins = [s.strip() for s in _cors_origins.split(",") if s.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=_default_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -367,6 +367,12 @@ def download_video_with_subs(
             "no_warnings": True,
             "http_headers": http_headers,
         }
+        # 選用：YouTube 機器人偵測時可設 YTDLP_COOKIES 指向瀏覽器匯出的 cookies.txt
+        cookies_path = os.environ.get("YTDLP_COOKIES")
+        if cookies_path:
+            p = Path(cookies_path).expanduser().resolve()
+            if p.is_file():
+                ydl_opts["cookiefile"] = str(p)
         if progress_hook:
             ydl_opts["progress_hooks"] = [progress_hook]
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:

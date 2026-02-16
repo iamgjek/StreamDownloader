@@ -1,6 +1,6 @@
 # Stream Downloader
 
-會員制影片下載服務：支援 YouTube、missav 及多數 yt-dlp 相容網站，可依檔名搜尋與下載字幕。
+影片在這下、字幕在這找，一站搞定。支援 MissAV、YouTube 跟一堆有的沒的～登入就能用，不用再兩邊跑。
 
 ---
 
@@ -82,6 +82,18 @@ npm run dev
 
 未設定時，字幕搜尋會回傳空結果。
 
+### 4. YouTube 出現「Sign in to confirm you're not a bot」時（選用）
+
+YouTube 可能將下載請求視為機器人。可擇一處理：
+
+1. **升級 yt-dlp**：請執行 `pip install -U yt-dlp` 取得最新版（YouTube 常更新，新版本較不易被擋）。
+2. **使用 cookies**：從已登入 YouTube 的瀏覽器匯出 cookies（例如用 Chrome 擴充功能「Get cookies.txt LOCALLY」存成 `youtube_cookies.txt`），啟動後端時設定：
+   ```bash
+   export YTDLP_COOKIES=/path/to/youtube_cookies.txt
+   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+   ```
+   **注意**：cookies 檔案含登入資訊，請勿分享或提交到版本庫。
+
 ---
 
 ## 使用方式
@@ -101,6 +113,28 @@ npm run dev
 | **後端** | FastAPI、SQLAlchemy（SQLite）、JWT 登入；yt-dlp 下載影片（.mkv）與字幕；下載採 job 制、即時回報進度；missav 由本機解析 m3u8 後以 yt-dlp 下載 |
 | **前端** | React 18、TypeScript、Vite、深色風格；專案名稱 Stream Downloader；首頁含介紹與操作說明 |
 | **管理** | `/dashboard` 僅管理員可進入，可查看會員與下載紀錄 |
+
+---
+
+## 部署到 Vercel
+
+僅**前端**適合部署至 [Vercel](https://vercel.com)；後端需使用 SQLite、長時間執行 yt-dlp，請另行部署到 [Railway](https://railway.app)、[Render](https://render.com)、[Fly.io](https://fly.io) 等支援常駐程式的平台。
+
+### 前端（Vercel）步驟
+
+1. 在 [Vercel](https://vercel.com) 匯入本專案（Import Git Repository）。
+2. **Root Directory**：設為 `frontend`（專案根目錄下的 `frontend` 資料夾）。
+3. **Environment Variables**：新增變數  
+   - 名稱：`VITE_API_BASE`  
+   - 值：後端 API 的完整網址（例如 `https://your-backend.railway.app/api`），須包含路徑 `/api`。
+4. 部署後，前端會從 Vercel 提供，所有 API 請求會送往你設定的後端網址。
+
+本地開發不需設定 `VITE_API_BASE`，會沿用 Vite proxy 的 `/api` 轉發到本機後端。
+
+### 後端（與 Vercel 前端搭配時）
+
+後端若另接 Vercel 前端，請在後端環境變數加上 **CORS_ORIGINS**，值為前端網址（多個以逗號分隔），例如：  
+`https://your-app.vercel.app`。未設定時僅允許本機來源（localhost:5173 等）。
 
 ---
 

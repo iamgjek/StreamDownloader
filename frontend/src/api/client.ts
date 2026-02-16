@@ -1,4 +1,4 @@
-const API = '/api'
+const API = import.meta.env.VITE_API_BASE ?? '/api'
 
 export function getToken(): string | null {
   return localStorage.getItem('stream_dl_token')

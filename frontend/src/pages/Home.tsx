@@ -10,7 +10,7 @@ export default function Home() {
       <section className={styles.hero}>
         <h1 className={styles.title}>Stream Downloader</h1>
         <p className={styles.tagline}>
-          加入會員即可將影片下載到本機，支援 YouTube、missav 及多數網站；並可依檔名搜尋、預覽與下載字幕。
+          影片在這下、字幕在這找，一站搞定。支援 MissAV、YouTube 跟一堆有的沒的～登入就能用，不用再兩邊跑。
         </p>
         {!token && (
           <Link to="/login" className={styles.cta}>
