@@ -272,8 +272,17 @@ def _progress_hook_factory(callback, cancelled_check: Callable[[], bool] | None 
                     pct = min(100, int(d.get("downloaded_bytes", 0) * 100 / d["total_bytes"]))
                     msg = d.get("_percent_str") or f"{pct}%"
                 else:
-                    pct = 0
                     msg = d.get("_percent_str") or "下載中…"
+                    # 無 total_bytes 時（如 HLS fragment）從 _percent_str 或 fragment 推算進度，讓 UI 與後端一致
+                    pct = 0
+                    percent_str = d.get("_percent_str") or ""
+                    m = re.search(r"(\d+(?:\.\d+)?)\s*%", percent_str)
+                    if m:
+                        pct = min(100, int(float(m.group(1)) + 0.5))
+                    elif d.get("fragment_count") and d.get("fragment_index") is not None:
+                        fc, fi = d["fragment_count"], d["fragment_index"]
+                        if fc > 0:
+                            pct = min(100, int(fi * 100 / fc))
                 callback(pct, msg)
             elif d.get("status") == "finished":
                 callback(100, "合併檔案中…")

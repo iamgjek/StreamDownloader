@@ -43,11 +43,17 @@ export default function Login() {
 
   return (
     <div className={styles.page}>
-      <h1 className={styles.title}>登入 / 加入會員</h1>
-      <p className={styles.hint}>
-        登入後即可使用影片下載與字幕下載功能。管理員請使用 id <code>admin</code> 登入。
-      </p>
+      <section className={styles.hero} aria-labelledby="login-heading">
+        <h1 id="login-heading" className={styles.title}>Stream Downloader</h1>
+        <p className={styles.tagline}>
+          影片在這下、字幕在這找，無碼、中字一站搞定！
+        </p>
+        <p className={styles.subtitle}>
+          支援 MissAV、YouTube 跟一堆有的沒的～登入就能用，不用再兩邊跑！
+        </p>
+      </section>
 
+      <div className={styles.cardWrap}>
       <div className={styles.card}>
         <div className={styles.tabs}>
           <button
@@ -134,9 +140,13 @@ export default function Login() {
 
         {error && <p className={styles.error} role="alert">{error}</p>}
       </div>
+      </div>
 
       <p className={styles.back}>
-        <Link to="/">← 返回影片下載</Link>
+        管理員請使用 id <code>admin</code> 登入。
+      </p>
+      <p className={styles.back}>
+        <Link to="/">← 返回首頁</Link>
       </p>
     </div>
   )
