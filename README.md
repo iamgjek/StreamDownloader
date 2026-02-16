@@ -17,8 +17,9 @@
 
 ## 環境需求
 
-- **Python** 3.10+
+- **Python** 3.10～3.12（**不建議 3.14**：目前 SQLAlchemy 與 Python 3.14 可能不相容，會導致後端啟動失敗；若系統預設為 3.14，可安裝 `brew install python@3.12` 後由 `./scripts/dev.sh` 自動選用）
 - **Node.js** 18+
+- **ffmpeg**（選用）：下載需合併影音格式的影片時（如多數 YouTube）會用到；未安裝會出現「ffmpeg is not installed」。macOS 可 `brew install ffmpeg`。
 
 ---
 
@@ -44,7 +45,21 @@ Downloader/
 
 ## 安裝與執行
 
-### 1. 後端（需先啟動）
+### 一鍵啟動（推薦）
+
+從專案根目錄執行下列腳本，會自動啟動後端（背景）與前端（前景）；按 `Ctrl+C` 會一併關閉。
+
+```bash
+./scripts/dev.sh
+```
+
+- **API**：http://127.0.0.1:8000  
+- **前端**：http://localhost:5173  
+- 適用 macOS / Linux；Windows 請用下方手動步驟。
+
+### 手動啟動（可選）
+
+#### 1. 後端（需先啟動）
 
 ```bash
 cd backend
@@ -57,7 +72,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - **API**：`http://127.0.0.1:8000`
 - **資料庫**：`backend/users.db`（SQLite）
 
-### 2. 前端
+#### 2. 前端
 
 ```bash
 cd frontend
@@ -93,6 +108,14 @@ YouTube 可能將下載請求視為機器人。可擇一處理：
    uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
    ```
    **注意**：cookies 檔案含登入資訊，請勿分享或提交到版本庫。
+
+### 5. 下載時出現「ffmpeg is not installed」（選用）
+
+yt-dlp 合併影音格式時需要 **ffmpeg**。請在本機安裝後再下載：
+
+- **macOS**：`brew install ffmpeg`
+- **Ubuntu / Debian**：`sudo apt install ffmpeg`
+- **Windows**：從 [ffmpeg 官網](https://ffmpeg.org/download.html) 下載並加入 PATH
 
 ---
 
