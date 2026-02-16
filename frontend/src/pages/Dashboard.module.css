@@ -1,0 +1,521 @@
+.page {
+  padding: 0.5rem 0;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+@media (min-width: 1024px) {
+  .page {
+    max-width: 1320px;
+  }
+}
+
+.dashHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-size: 1.5rem;
+  margin: 0 0 0.5rem;
+}
+
+.hint {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.lastUpdated {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  padding: 0.25rem 0.5rem;
+  background: var(--bg-elevated);
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+/* ----- KPI 摘要 ----- */
+.kpiSection {
+  margin-bottom: 2rem;
+}
+
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 1rem;
+}
+
+.kpiCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.kpiLabel {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.kpiValue {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+.kpiPositive {
+  color: var(--success);
+}
+
+.kpiNeutral {
+  color: var(--text-muted);
+}
+
+.kpiNegative {
+  color: var(--error);
+}
+
+/* ----- 近 7 日趨勢 ----- */
+.trendSection {
+  margin-bottom: 2rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+}
+
+.trendTitle {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin: 0 0 0.75rem;
+  font-weight: 600;
+}
+
+.trendChart {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  min-height: 80px;
+}
+
+.trendBarWrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.trendBar {
+  width: 100%;
+  max-width: 32px;
+  min-height: 4px;
+  background: var(--accent);
+  border-radius: 4px 4px 0 0;
+  transition: height 200ms ease;
+}
+
+.trendLabel {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.trendCount {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* ----- 狀態標籤與摘要 ----- */
+.statusBadge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.statusSuccess {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--success);
+}
+
+.statusError {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--error);
+}
+
+.statusNeutral {
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+}
+
+.statusSummary {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.statusSummaryItem {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.dotSuccess,
+.dotError,
+.dotNeutral {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.dotSuccess { background: var(--success); }
+.dotError { background: var(--error); }
+.dotNeutral { background: var(--text-muted); }
+
+.section {
+  margin-bottom: 2rem;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.sectionHead h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+.section h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.75rem;
+}
+.hintSmall {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0 0 0.5rem;
+}
+
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.filterLabel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.filterLabelText {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.filterSelect,
+.filterInput {
+  min-height: 36px;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.filterSelect {
+  min-width: 140px;
+}
+
+.filterInput {
+  min-width: 180px;
+}
+
+.filterSelect:focus,
+.filterInput:focus {
+  outline: none;
+}
+
+.filterSelect:focus-visible,
+.filterInput:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.filterClear {
+  padding: 0.4rem 0.75rem;
+  min-height: 36px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 200ms ease, color 200ms ease;
+}
+
+.filterClear:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btnPrimary {
+  padding: 0.5rem 0.9rem;
+  min-height: 44px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 200ms ease;
+}
+.btnPrimary:hover {
+  background: var(--accent-hover);
+}
+.btnPrimary:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+.btnSecondary {
+  padding: 0.5rem 0.9rem;
+  min-height: 44px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 200ms ease, color 200ms ease;
+}
+.btnSecondary:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.btnSecondary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.btnSm {
+  padding: 0.35rem 0.6rem;
+  min-height: 36px;
+  margin-right: 0.35rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: border-color 200ms ease, color 200ms ease;
+}
+.btnSm:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.btnSm:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.btnSmDanger {
+  padding: 0.35rem 0.6rem;
+  min-height: 36px;
+  background: transparent;
+  border: 1px solid var(--error);
+  color: var(--error);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background-color 200ms ease;
+}
+.btnSmDanger:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+.btnSmDanger:focus-visible {
+  outline: 2px solid var(--error);
+  outline-offset: 2px;
+}
+.btnSmDanger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.cellClip {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.desc {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+}
+.modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  max-width: 420px;
+  width: 100%;
+}
+.modal h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+.modalHint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0 0 0.75rem;
+}
+.btnFetchOg {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  min-height: 44px;
+  margin-bottom: 0.75rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 200ms ease, color 200ms ease;
+}
+.btnFetchOg:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.btnFetchOg:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.btnFetchOg:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.modal .label {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+  margin-top: 0.75rem;
+}
+.modal .label:first-of-type { margin-top: 0; }
+.modal .input,
+.modal .textarea {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.95rem;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+.modal .input:focus,
+.modal .textarea:focus {
+  outline: none;
+}
+.modal .input:focus-visible,
+.modal .textarea:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.modal .textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+.modal .checkLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.modalActions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table th,
+.table td {
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.table th {
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.url {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loading,
+.error {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-muted);
+}
+
+.error {
+  color: var(--error);
+}

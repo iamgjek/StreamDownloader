@@ -1,0 +1,106 @@
+/* Stream Downloader – Design system: dark utility SaaS */
+:root {
+  --bg: #0a0a0f;
+  --bg-card: #12121a;
+  --bg-elevated: #1a1a24;
+  --border: #2a2a38;
+  --text: #e8e8f0;
+  --text-muted: #94a3b8;
+  --accent: #6366f1;
+  --accent-hover: #818cf8;
+  --accent-glow: rgba(99, 102, 241, 0.25);
+  --cta: #10b981;
+  --cta-hover: #34d399;
+  --success: #22c55e;
+  --error: #ef4444;
+  --radius: 14px;
+  --font: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --focus-ring: 2px solid var(--accent);
+  --focus-offset: 2px;
+  --transition-duration: 200ms;
+  --transition-timing: ease;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Focus: visible ring for keyboard nav (don't remove outline without replacement) */
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-duration: 0ms;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.6;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color var(--transition-duration) var(--transition-timing);
+}
+a:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
+button {
+  font-family: var(--font);
+  cursor: pointer;
+  transition: background-color var(--transition-duration) var(--transition-timing),
+    border-color var(--transition-duration) var(--transition-timing),
+    color var(--transition-duration) var(--transition-timing);
+}
+
+input,
+textarea {
+  font-family: var(--font-mono);
+  transition: border-color var(--transition-duration) var(--transition-timing);
+}
+
+/* Skip link for keyboard users */
+.skipLink {
+  position: absolute;
+  top: -100px;
+  left: 0.75rem;
+  z-index: 100;
+  padding: 0.5rem 1rem;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+.skipLink:focus {
+  top: 0.75rem;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
