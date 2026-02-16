@@ -1,10 +1,16 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api/client'
-import { getToken } from '../api/client'
 import styles from './Download.module.css'
 
 type HistoryItem = { id: number; url: string; title: string | null; og_description: string | null; status: string; created_at: string }
 
+/** 先選資料夾再存檔時用的 handle 型別（File System Access API） */
+type DownloadDirHandle = {
+  name: string
+  getFileHandle(name: string, opts?: { create?: boolean }): Promise<{
+    createWritable(): Promise<{ write(data: Blob): Promise<void>; close(): Promise<void> }>
+  }>
+}
 /** 是否支援「先選資料夾再存檔」（File System Access API，Chrome/Edge 等） */
 const supportsPickDir = typeof window !== 'undefined' && 'showDirectoryPicker' in window
 
@@ -17,7 +23,7 @@ export default function Download() {
   const [error, setError] = useState('')
   const [title, setTitle] = useState<string | null>(null)
   /** 使用者先選好的下載資料夾（僅限支援 showDirectoryPicker 的瀏覽器） */
-  const [downloadDirHandle, setDownloadDirHandle] = useState<FileSystemDirectoryHandle | null>(null)
+  const [downloadDirHandle, setDownloadDirHandle] = useState<DownloadDirHandle | null>(null)
   const [downloadDirName, setDownloadDirName] = useState<string>('')
 
   const [history, setHistory] = useState<HistoryItem[]>([])
@@ -81,7 +87,8 @@ export default function Download() {
     if (!supportsPickDir) return
     setError('')
     try {
-      const handle = await window.showDirectoryPicker({ mode: 'readwrite' })
+      const win = window as unknown as { showDirectoryPicker(opts?: { mode?: string }): Promise<DownloadDirHandle> }
+      const handle = await win.showDirectoryPicker({ mode: 'readwrite' })
       setDownloadDirHandle(handle)
       setDownloadDirName(handle.name)
     } catch (e) {
