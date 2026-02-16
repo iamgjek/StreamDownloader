@@ -1,8 +1,9 @@
+import os
 from datetime import datetime, timedelta
 import bcrypt
 from jose import JWTError, jwt
 
-SECRET_KEY = "your-secret-key-change-in-production-use-env"
+SECRET_KEY = os.environ.get("SECRET_KEY", "your-secret-key-change-in-production-use-env")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 

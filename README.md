@@ -116,9 +116,23 @@ YouTube 可能將下載請求視為機器人。可擇一處理：
 
 ---
 
-## 部署到 Vercel
+## 部署（前端 Vercel + 後端 Render）
 
-僅**前端**適合部署至 [Vercel](https://vercel.com)；後端需使用 SQLite、長時間執行 yt-dlp，請另行部署到 [Railway](https://railway.app)、[Render](https://render.com)、[Fly.io](https://fly.io) 等支援常駐程式的平台。
+- **前端**：部署至 [Vercel](https://vercel.com)（靜態站點）。
+- **後端**：部署至 [Render](https://render.com)（常駐 Web Service，支援 SQLite 與 yt-dlp 長時間下載）。
+
+### 後端（Render）步驟
+
+1. 前往 [Render](https://render.com) 登入，點 **New → Blueprint**，選擇「連接到 Git 倉庫」並選定本專案。
+2. Render 會讀取專案根目錄的 **`render.yaml`**，自動建立一個 **Web Service**（名稱如 `stream-downloader-api`）。
+3. 在該 Service 的 **Environment** 中新增環境變數（必填建議先設）：
+   - **SECRET_KEY**：JWT 用，請設為一組隨機字串（正式環境必改）。
+   - **CORS_ORIGINS**：前端網址，例如 `https://your-app.vercel.app`（與 Vercel 前端搭配時必設）。
+   - **OPENSUBTITLES_API_KEY**：（選用）字幕搜尋用。
+   - **DATABASE_URL**：（選用）若在 Render 掛載 Persistent Disk 於 `/data`，可設 `sqlite:////data/users.db` 以持久化資料庫；未設則使用預設路徑（重啟或重新部署後資料可能重置）。
+4. 部署完成後，後端網址為 `https://<你的服務名稱>.onrender.com`，API 基礎路徑為 **`https://<服務名稱>.onrender.com/api`**（前端 `VITE_API_BASE` 須指向此網址並含 `/api`）。
+
+**注意**：Render 免費方案服務在一段時間無請求後會進入休眠，首次喚醒可能較慢；若需常駐可考慮付費方案。
 
 ### 前端（Vercel）步驟
 
@@ -126,15 +140,15 @@ YouTube 可能將下載請求視為機器人。可擇一處理：
 2. **Root Directory**：設為 `frontend`（專案根目錄下的 `frontend` 資料夾）。
 3. **Environment Variables**：新增變數  
    - 名稱：`VITE_API_BASE`  
-   - 值：後端 API 的完整網址（例如 `https://your-backend.railway.app/api`），須包含路徑 `/api`。
-4. 部署後，前端會從 Vercel 提供，所有 API 請求會送往你設定的後端網址。
+   - 值：後端 API 的完整網址，須包含路徑 `/api`，例如 `https://stream-downloader-api.onrender.com/api`。
+4. 部署後，前端由 Vercel 提供，所有 API 請求會送往上述後端網址。
 
 本地開發不需設定 `VITE_API_BASE`，會沿用 Vite proxy 的 `/api` 轉發到本機後端。
 
-### 後端（與 Vercel 前端搭配時）
+### 前後端串接提醒
 
-後端若另接 Vercel 前端，請在後端環境變數加上 **CORS_ORIGINS**，值為前端網址（多個以逗號分隔），例如：  
-`https://your-app.vercel.app`。未設定時僅允許本機來源（localhost:5173 等）。
+- 後端 **CORS_ORIGINS** 必須包含前端實際網址（例如 `https://your-app.vercel.app`），多個以逗號分隔。
+- 前端 **VITE_API_BASE** 必須指向後端完整 API 網址（含 `/api`）。
 
 ---
 

@@ -1,0 +1,17 @@
+# Render Blueprint：後端 API（與前端 Vercel 搭配使用）
+# 說明：https://render.com/docs/infrastructure-as-code
+
+services:
+  - type: web
+    name: stream-downloader-api
+    runtime: python
+    rootDir: backend
+
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+
+    # 以下環境變數請在 Render Dashboard 的 Service → Environment 中設定（勿提交敏感值）：
+    # - SECRET_KEY          （JWT 用，正式環境必改）
+    # - CORS_ORIGINS        （前端網址，例如 https://your-app.vercel.app）
+    # - OPENSUBTITLES_API_KEY（選用，字幕搜尋）
+    # - DATABASE_URL         （選用，例如 sqlite:////data/users.db，搭配 Persistent Disk 掛載 /data）
