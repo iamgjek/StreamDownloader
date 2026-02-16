@@ -88,9 +88,14 @@ export default function Subtitles() {
   const download = (item: SubItem) => {
     const token = getToken()
     const url = api.subsDownloadUrl(item, 'zht')
+    setError('')
     fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-      .then((r) => {
-        if (!r.ok) throw new Error('下載失敗')
+      .then(async (r) => {
+        if (!r.ok) {
+          const data = await r.json().catch(() => ({}))
+          const msg = (data.detail as string) || r.statusText || '下載失敗'
+          throw new Error(msg)
+        }
         const disp = r.headers.get('Content-Disposition')
         let name = item.file_name || 'subtitle.srt'
         if (disp) {
@@ -106,7 +111,7 @@ export default function Subtitles() {
         a.click()
         URL.revokeObjectURL(a.href)
       })
-      .catch(() => setError('下載失敗'))
+      .catch((e) => setError(e instanceof Error ? e.message : '下載失敗'))
   }
 
   const totalPages = Math.max(1, Math.ceil(historyTotal / HISTORY_PAGE_SIZE))

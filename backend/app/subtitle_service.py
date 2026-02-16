@@ -2,11 +2,14 @@
 字幕搜尋：依檔名/片名查詢，並可下載 .srt。
 來源：OpenSubtitles REST API（需設定 OPENSUBTITLES_API_KEY）、Subtitle Cat（https://www.subtitlecat.com/）。
 """
+import logging
 import os
 import re
 from typing import Any
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 # ---------- OpenSubtitles ----------
 BASE_URL = "https://api.opensubtitles.com/api/v1"
@@ -176,19 +179,25 @@ def download_subtitlecat(page_url: str, lang: str = "zht") -> tuple[bytes | None
     try:
         r = requests.get(page_url, headers=SUBTITLECAT_HEADERS, timeout=15)
         if r.status_code != 200:
+            logger.info("subtitlecat page %s returned status %s", page_url[:80], r.status_code)
             return None, None
         html = r.text
-        # 抓取所有 .srt 下載連結（絕對或相對；格式 ...-zh-TW.srt, ...-zh-CN.srt）
+        # 抓取所有 .srt 連結：絕對 URL、或相對 /subs/... 路徑（Subtitle Cat 格式 ...-en.srt, ...-zh-TW.srt）
         srt_links = re.findall(
-            r'href=["\']?(https?://[^"\'\s>]+?-[a-zA-Z]{2}(?:-[a-zA-Z]{2})?\.srt)["\']?',
+            r'href=["\']?(https?://[^"\'\s>]+?\.srt(?:\?[^"\'\s>]*)?)["\']?',
             html,
+            re.I,
         )
         if not srt_links:
             srt_links = re.findall(
-                r'href=["\']?(/?subs/[^"\'\s>]+?-[a-zA-Z]{2}(?:-[a-zA-Z]{2})?\.srt)["\']?',
+                r'href=["\']?((?:/?subs/[^"\'\s>]+?)\.srt(?:\?[^"\'\s>]*)?)["\']?',
                 html,
+                re.I,
             )
-            srt_links = [url if url.startswith("http") else f"{SUBTITLECAT_BASE}{url}" for url in srt_links]
+            srt_links = [
+                (url if url.startswith("http") else f"{SUBTITLECAT_BASE}/{url.lstrip('/')}")
+                for url in srt_links
+            ]
         srt_links = list(dict.fromkeys(srt_links))
         # 僅接受 zh-TW / zh-CN 的 .srt（候選後綴與 URL 皆轉小寫比對）
         candidates = LANG_TO_SUFFIX.get(lang, [lang])
@@ -197,21 +206,27 @@ def download_subtitlecat(page_url: str, lang: str = "zht") -> tuple[bytes | None
             url_lower = url.lower()
             for suf in candidates:
                 suffix = suf.lower()
-                if f"-{suffix}.srt" in url_lower:
+                # 匹配 -zh-tw.srt 或 -zh-cn.srt（URL 可能帶 query）
+                if f"-{suffix}.srt" in url_lower or f"-{suffix}?" in url_lower:
                     download_url = url
                     break
             if download_url:
                 break
-        # 僅 zh-tw / zh-cn，不 fallback 到其他語言
         if not download_url:
+            logger.info(
+                "subtitlecat no %s .srt link on page (found %d .srt links)",
+                lang,
+                len(srt_links),
+            )
             return None, None
         r2 = requests.get(download_url, headers=SUBTITLECAT_HEADERS, timeout=30)
         if r2.status_code != 200:
+            logger.info("subtitlecat srt download %s returned %s", download_url[:80], r2.status_code)
             return None, None
         name = download_url.split("/")[-1].split("?")[0] or "subtitle.srt"
         return r2.content, name
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("subtitlecat download_subtitlecat error: %s", e, exc_info=True)
     return None, None
 
 

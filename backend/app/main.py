@@ -518,9 +518,14 @@ def subs_download(
             raise HTTPException(status_code=400, detail="請提供 file_id 或 download_url")
         content, filename = download_subtitle_file(file_id=file_id, download_url=download_url)
     if content is None:
+        if source == "subtitlecat":
+            raise HTTPException(
+                status_code=404,
+                detail="此頁沒有該語言的直接下載連結（Subtitle Cat 繁中/簡中可能僅提供「翻譯」、無現成 .srt 可下載，請改選其它語言或來源）",
+            )
         raise HTTPException(
-            status_code=502,
-            detail="無法取得字幕檔（OpenSubtitles 請確認 OPENSUBTITLES_API_KEY；Subtitle Cat 請確認該頁有該語言）",
+            status_code=404,
+            detail="無法取得字幕檔（OpenSubtitles 請確認 OPENSUBTITLES_API_KEY 或該檔案仍存在）",
         )
     return Response(
         content=content,
