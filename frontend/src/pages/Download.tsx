@@ -70,24 +70,32 @@ export default function Download() {
         if (s.status === 'done') {
           setJobId(null)
           loadHistory(1)
-          // Trigger file download
-          const token = getToken()
-          const res = await fetch(`/api/download/result/${jobId}`, {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          })
-          if (!res.ok) throw new Error('無法取得檔案')
-          const blob = await res.blob()
-          const disp = res.headers.get('Content-Disposition')
-          let filename = 'download.mkv'
-          if (disp) {
-            const m = disp.match(/filename\*?=(?:UTF-8'')?([^;]+)/)
-            if (m) filename = m[1].trim().replace(/^["']|["']$/g, '')
+          // 使用 API 基礎 URL 取檔（部署時 /api 須指到後端）
+          const downloadUrl = api.downloadResultUrl(jobId)
+          try {
+            const res = await fetch(downloadUrl)
+            if (!res.ok) throw new Error('無法取得檔案')
+            const blob = await res.blob()
+            const disp = res.headers.get('Content-Disposition')
+            let filename = 'download.mkv'
+            if (disp) {
+              const m = disp.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i) ?? disp.match(/filename=([^;]+)/)
+              if (m) filename = m[1].trim().replace(/^["']|["']$/g, '')
+            }
+            const a = document.createElement('a')
+            a.href = URL.createObjectURL(blob)
+            a.download = filename
+            a.style.display = 'none'
+            document.body.appendChild(a)
+            a.click()
+            // 延遲 revoke，確保瀏覽器有時間開始存檔
+            setTimeout(() => {
+              document.body.removeChild(a)
+              URL.revokeObjectURL(a.href)
+            }, 500)
+          } catch (e) {
+            setError(e instanceof Error ? e.message : '檔案下載失敗')
           }
-          const a = document.createElement('a')
-          a.href = URL.createObjectURL(blob)
-          a.download = filename
-          a.click()
-          URL.revokeObjectURL(a.href)
         }
         if (s.status === 'error') {
           setError(s.message || '下載失敗')

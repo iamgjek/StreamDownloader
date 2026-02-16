@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query, status
 from fastapi import APIRouter
 from fastapi.responses import FileResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -158,6 +158,28 @@ def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
     if not current_user.is_admin:
         raise HTTPException(status_code=403, detail="需要管理員權限")
     return current_user
+
+
+def get_current_user_for_download(
+    token: str | None = Query(None, alias="token"),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    db: Session = Depends(get_db),
+) -> User:
+    """取得當前使用者，支援 query ?token= 或 Authorization: Bearer（方便前端用連結觸發下載）。"""
+    raw = token if token else (credentials.credentials if credentials else None)
+    if not raw:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="請先登入",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    payload = decode_token(raw)
+    if not payload or "sub" not in payload:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="登入已過期或無效")
+    user = db.query(User).filter(User.id == int(payload["sub"])).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="使用者不存在")
+    return user
 
 
 api = APIRouter(prefix="/api", tags=["api"])
@@ -388,7 +410,7 @@ def me(current_user: User = Depends(get_current_user)):
 @api.get("/download/result/{job_id}")
 def download_result(
     job_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user_for_download),
     db: Session = Depends(get_db),
 ):
     log = db.query(DownloadLog).filter(DownloadLog.id == job_id).first()

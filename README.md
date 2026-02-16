@@ -149,7 +149,9 @@ yt-dlp 合併影音格式時需要 **ffmpeg**。請在本機安裝後再下載�
 1. 前往 [Render](https://render.com) 登入，點 **New → Blueprint**，選擇「連接到 Git 倉庫」並選定本專案。
 2. Render 會讀取專案根目錄的 **`render.yaml`**，自動建立一個 **Web Service**（名稱如 `stream-downloader-api`）。
 3. 在該 Service 的 **Environment** 中新增環境變數（必填建議先設）：
-   - **SECRET_KEY**：JWT 用，請設為一組隨機字串（正式環境必改）。
+   - **SECRET_KEY**：JWT 簽章用，正式環境必改。可於本機產生一組隨機字串後貼上，例如：
+     - 終端機執行：`openssl rand -hex 32`，得到類似 `a1b2c3d4e5f6...` 的 64 字元十六進位字串，整串複製為 SECRET_KEY 的值。
+     - 或：`python3 -c "import secrets; print(secrets.token_hex(32))"`，同樣將輸出整串設為 SECRET_KEY。
    - **CORS_ORIGINS**：前端網址，例如 `https://your-app.vercel.app`（與 Vercel 前端搭配時必設）。
    - **OPENSUBTITLES_API_KEY**：（選用）字幕搜尋用。
    - **DATABASE_URL**：（選用）若在 Render 掛載 Persistent Disk 於 `/data`，可設 `sqlite:////data/users.db` 以持久化資料庫；未設則使用預設路徑（重啟或重新部署後資料可能重置）。
