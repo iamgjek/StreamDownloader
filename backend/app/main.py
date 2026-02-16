@@ -29,6 +29,18 @@ from app.schemas import (
     DownloadHistoryResponse,
     UserUpdate,
 )
+# 下載檔名：標題過長時縮減字元數，避免超過檔案系統限制
+MAX_FILENAME_BASE_LEN = 180
+
+
+def _filename_from_title(title: str, suffix: str) -> str:
+    """依標題產生檔名，過長則適量縮減。"""
+    base = (title or "video").strip()
+    if len(base) > MAX_FILENAME_BASE_LEN:
+        base = base[:MAX_FILENAME_BASE_LEN].rstrip() or "video"
+    return f"{base}{suffix}"
+
+
 from app.auth import (
     get_password_hash,
     verify_password,
@@ -279,7 +291,7 @@ def _run_download_job(job_id: int, url: str, dtype: str, user_id: int) -> None:
         if dtype == "video":
             if video_path and video_path.exists():
                 result_data["video_path"] = video_path
-                result_data["filename"] = f"{title}{video_path.suffix}"
+                result_data["filename"] = _filename_from_title(title, video_path.suffix)
             else:
                 log = db.query(DownloadLog).filter(DownloadLog.id == job_id).first()
                 if log:
