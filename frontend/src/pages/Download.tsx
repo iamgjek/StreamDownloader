@@ -5,6 +5,9 @@ import styles from './Download.module.css'
 
 type HistoryItem = { id: number; url: string; title: string | null; og_description: string | null; status: string; created_at: string }
 
+/** 是否支援「先選資料夾再存檔」（File System Access API，Chrome/Edge 等） */
+const supportsPickDir = typeof window !== 'undefined' && 'showDirectoryPicker' in window
+
 export default function Download() {
   const [url, setUrl] = useState('')
   const [jobId, setJobId] = useState<number | null>(null)
@@ -13,6 +16,9 @@ export default function Download() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [title, setTitle] = useState<string | null>(null)
+  /** 使用者先選好的下載資料夾（僅限支援 showDirectoryPicker 的瀏覽器） */
+  const [downloadDirHandle, setDownloadDirHandle] = useState<FileSystemDirectoryHandle | null>(null)
+  const [downloadDirName, setDownloadDirName] = useState<string>('')
 
   const [history, setHistory] = useState<HistoryItem[]>([])
   const [historyTotal, setHistoryTotal] = useState(0)
@@ -70,6 +76,47 @@ export default function Download() {
     }
   }
 
+  /** 先選擇下載位置（需支援 File System Access API） */
+  const pickDownloadDir = async () => {
+    if (!supportsPickDir) return
+    setError('')
+    try {
+      const handle = await window.showDirectoryPicker({ mode: 'readwrite' })
+      setDownloadDirHandle(handle)
+      setDownloadDirName(handle.name)
+    } catch (e) {
+      if (e instanceof Error && e.name !== 'AbortError') {
+        setError(e.message || '無法取得資料夾權限')
+      }
+    }
+  }
+
+  /** 將 blob 存到指定檔名：有選資料夾則寫入該資料夾，否則用瀏覽器下載 */
+  const saveBlobToTarget = async (blob: Blob, filename: string) => {
+    const safeName = filename.replace(/[/\\?*:|"]/g, '_').trim() || 'download.mkv'
+    if (downloadDirHandle) {
+      try {
+        const fileHandle = await downloadDirHandle.getFileHandle(safeName, { create: true })
+        const writable = await fileHandle.createWritable()
+        await writable.write(blob)
+        await writable.close()
+      } catch (e) {
+        setError(e instanceof Error ? e.message : '寫入資料夾失敗')
+      }
+      return
+    }
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = safeName
+    a.style.display = 'none'
+    document.body.appendChild(a)
+    a.click()
+    setTimeout(() => {
+      document.body.removeChild(a)
+      URL.revokeObjectURL(a.href)
+    }, 500)
+  }
+
   // Poll status when we have a job
   useEffect(() => {
     if (jobId == null) return
@@ -100,17 +147,7 @@ export default function Download() {
               const m = disp.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i) ?? disp.match(/filename=([^;]+)/)
               if (m) filename = m[1].trim().replace(/^["']|["']$/g, '')
             }
-            const a = document.createElement('a')
-            a.href = URL.createObjectURL(blob)
-            a.download = filename
-            a.style.display = 'none'
-            document.body.appendChild(a)
-            a.click()
-            // 延遲 revoke，確保瀏覽器有時間開始存檔
-            setTimeout(() => {
-              document.body.removeChild(a)
-              URL.revokeObjectURL(a.href)
-            }, 500)
+            await saveBlobToTarget(blob, filename)
           } catch (e) {
             setError(e instanceof Error ? e.message : '檔案下載失敗')
           }
@@ -124,7 +161,7 @@ export default function Download() {
       }
     }, pollInterval)
     return () => clearInterval(t)
-  }, [jobId, message])
+  }, [jobId, message, downloadDirHandle])
 
   const isLoading = jobId != null && status !== 'done' && status !== 'error' && status !== 'cancelled'
   const canCancel = jobId != null && (status === 'pending' || status === 'downloading')
@@ -133,10 +170,36 @@ export default function Download() {
     <div className={styles.page}>
       <h1 className={styles.title}>影片下載</h1>
       <p className={styles.hint}>
-        貼上影片網址後開始下載，即時顯示進度；完成時會儲存為 .mkv 至瀏覽器下載位置（可於下載時選擇存放位置）。
+        建議先選擇下載位置（大檔案直接存到指定資料夾），再貼上網址開始下載；完成後會儲存為 .mkv。
       </p>
 
       <div className={styles.card}>
+        {supportsPickDir && (
+          <div className={styles.downloadDirRow}>
+            <label className={styles.label}>下載位置</label>
+            <div className={styles.downloadDirControls}>
+              <button
+                type="button"
+                className={styles.btnSecondary}
+                onClick={pickDownloadDir}
+                disabled={isLoading}
+                aria-label="選擇要存放檔案的資料夾"
+              >
+                {downloadDirName ? `已選擇：${downloadDirName}` : '選擇下載位置…'}
+              </button>
+              {downloadDirName && (
+                <button
+                  type="button"
+                  className={styles.btnLink}
+                  onClick={() => { setDownloadDirHandle(null); setDownloadDirName('') }}
+                  aria-label="清除已選資料夾，改為瀏覽器預設下載"
+                >
+                  改為瀏覽器預設
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         <label className={styles.label} htmlFor="download-url">影片網址</label>
         <input
           id="download-url"

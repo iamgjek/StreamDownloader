@@ -46,6 +46,53 @@
   box-shadow: 0 0 0 2px var(--accent);
 }
 
+.downloadDirRow {
+  margin-bottom: 1rem;
+}
+
+.downloadDirControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btnSecondary {
+  padding: 0.6rem 1rem;
+  min-height: 40px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: border-color 200ms ease, color 200ms ease;
+}
+
+.btnSecondary:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btnSecondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btnLink {
+  padding: 0.4rem 0.6rem;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.btnLink:hover {
+  color: var(--text);
+}
+
 .btn {
   width: 100%;
   padding: 0.75rem 1.25rem;
