@@ -144,7 +144,8 @@ _default_origins = [
 ]
 _cors_origins = os.getenv("CORS_ORIGINS")
 if _cors_origins:
-    _default_origins = [s.strip() for s in _cors_origins.split(",") if s.strip()]
+    # 瀏覽器送出的 Origin 不含尾端斜線，故這裡一律去掉
+    _default_origins = [s.strip().rstrip("/") for s in _cors_origins.split(",") if s.strip()]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_default_origins,
