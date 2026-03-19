@@ -13,7 +13,7 @@
   margin: 0 0 1.5rem;
 }
 
-/* 本帳號已下載的檔名，與影片下載頁 section 間距一致 */
+/* 本機記錄的已下載字幕關鍵字，與影片下載頁 section 間距一致 */
 .historySection {
   margin-top: 2rem;
   background: var(--bg-card);
@@ -46,6 +46,7 @@
   gap: 0.75rem;
   padding: 0.5rem 0;
   border-bottom: 1px solid var(--border);
+  flex-wrap: nowrap; /* 避免關鍵字換行影響視覺 */
 }
 
 .historyList li:last-child {
