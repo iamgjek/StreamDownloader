@@ -468,6 +468,10 @@ def download_video_with_subs(
             "quiet": True,
             "no_warnings": True,
             "http_headers": http_headers,
+            # 確保最終容器格式統一為 mkv（含單檔直下的情況）
+            "postprocessors": [
+                {"key": "FFmpegVideoRemuxer", "preferedformat": merge_format}
+            ],
         }
         if progress_hook:
             ydl_opts_missav["progress_hooks"] = [progress_hook]
@@ -490,6 +494,10 @@ def download_video_with_subs(
             "quiet": True,
             "no_warnings": True,
             "http_headers": http_headers,
+            # 確保最終容器格式統一為 mkv（含單檔直下的情況）
+            "postprocessors": [
+                {"key": "FFmpegVideoRemuxer", "preferedformat": merge_format}
+            ],
         }
         # 選用：YouTube 機器人偵測時可設 YTDLP_COOKIES 指向瀏覽器匯出的 cookies.txt
         cookies_path = os.environ.get("YTDLP_COOKIES")
