@@ -19,6 +19,109 @@
   flex-wrap: wrap;
 }
 
+/* ----- Dashboard layout (sidebar + content) ----- */
+.dashLayout {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+
+.sidebar {
+  flex: 0 0 220px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+}
+
+.dashContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebarBtn {
+  width: 100%;
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 200ms ease, background-color 200ms ease, color 200ms ease;
+  margin-bottom: 0.35rem;
+  font-size: 0.95rem;
+}
+
+.sidebarBtn:last-child {
+  margin-bottom: 0;
+}
+
+.sidebarBtn:hover {
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.sidebarBtnActive {
+  width: 100%;
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--accent);
+  cursor: pointer;
+  margin-bottom: 0.35rem;
+  font-size: 0.95rem;
+}
+
+.sidebarBtnActive:last-child {
+  margin-bottom: 0;
+}
+
+/* ----- Download type tabs ----- */
+.typeTabs {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.typeTab {
+  padding: 0.4rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 200ms ease, color 200ms ease, background-color 200ms ease;
+  font-size: 0.85rem;
+}
+
+.typeTab:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.typeTabActive {
+  padding: 0.4rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--accent);
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 900px) {
+  .dashLayout {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+  }
+}
+
 .title {
   font-size: 1.5rem;
   margin: 0 0 0.5rem;
@@ -145,6 +248,18 @@
   border-radius: 6px;
   font-size: 0.8rem;
   font-weight: 500;
+}
+
+.typeBadge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .statusSuccess {

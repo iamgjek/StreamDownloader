@@ -117,11 +117,29 @@ def _migrate_download_log_og():
             pass
 
 
+def _migrate_download_log_download_type():
+    """若 download_logs 沒有 download_type 則新增。"""
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        try:
+            cols = _get_column_names(conn, "download_logs")
+            if "download_type" not in cols:
+                # nullable：允許既有資料列為 NULL，前端會以 video 當作預設
+                if IS_SQLITE:
+                    conn.execute(text("ALTER TABLE download_logs ADD COLUMN download_type VARCHAR(20)"))
+                else:
+                    conn.execute(text("ALTER TABLE download_logs ADD COLUMN download_type VARCHAR(20)"))
+            conn.commit()
+        except Exception:
+            pass
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     _migrate_add_is_admin()
     _migrate_download_log_og()
+    _migrate_download_log_download_type()
     db = SessionLocal()
     try:
         _seed_admin(db)
@@ -376,6 +394,7 @@ def download_start(
     log = DownloadLog(
         user_id=current_user.id,
         url=body.url.strip(),
+        download_type=dtype,
         status="pending",
         progress=0,
         message="排隊中…",
@@ -453,6 +472,7 @@ def downloads_history(
             url=r.url,
             title=r.og_title or r.title,
             og_description=r.og_description,
+            download_type=getattr(r, "download_type", None),
             status=r.status,
             created_at=r.created_at,
         )
@@ -528,6 +548,9 @@ def subs_download(
     source: str = "opensubtitles",
     page_url: str | None = None,
     lang: str = "zht",
+    keyword: str | None = None,
+    token: str | None = Query(None, alias="token"),
+    db: Session = Depends(get_db),
 ):
     """下載單一字幕檔到本地（由瀏覽器儲存）。支援 OpenSubtitles 與 Subtitle Cat。"""
     if source == "subtitlecat":
@@ -550,6 +573,40 @@ def subs_download(
             status_code=404,
             detail="無法取得字幕檔（OpenSubtitles 請確認 OPENSUBTITLES_API_KEY 或該檔案仍存在）",
         )
+    # 若有 token（使用者已登入），就記錄此筆字幕下載到 download_logs，供管理後台顯示
+    current_user_id: int | None = None
+    if token:
+        try:
+            payload = decode_token(token)
+            if payload and "sub" in payload:
+                current_user_id = int(payload["sub"])
+        except Exception:
+            current_user_id = None
+
+    if current_user_id is not None:
+        try:
+            clean_keyword = (keyword or "").strip()
+            log_title = clean_keyword or (filename or "subtitle.srt")
+            log_url = page_url or download_url or str(file_id or "subtitle")
+
+            log = DownloadLog(
+                user_id=current_user_id,
+                url=log_url,
+                title=log_title,
+                download_type="subs",
+                og_title=None,
+                og_description=None,
+                status="done",
+                progress=100,
+                message="完成",
+                completed_at=datetime.utcnow(),
+            )
+            db.add(log)
+            db.commit()
+        except Exception:
+            # logging failure 不影響下載本身
+            pass
+
     return Response(
         content=content,
         media_type="application/x-subrip",
@@ -597,6 +654,7 @@ def admin_list_downloads(
             title=log.title,
             og_title=getattr(log, "og_title", None),
             og_description=getattr(log, "og_description", None),
+            download_type=getattr(log, "download_type", None),
             status=log.status,
             progress=log.progress or 0,
             message=log.message,
@@ -731,6 +789,7 @@ def admin_update_download(
         title=log.title,
         og_title=getattr(log, "og_title", None),
         og_description=getattr(log, "og_description", None),
+        download_type=getattr(log, "download_type", None),
         status=log.status,
         progress=log.progress or 0,
         message=log.message,

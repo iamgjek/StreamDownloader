@@ -7,6 +7,7 @@ type UserRow = { id: number; email: string; username: string; is_admin: boolean;
 type DownloadRow = {
   id: number; user_id: number; username: string; url: string; title: string | null;
   og_title: string | null; og_description: string | null;
+  download_type: string | null;
   status: string; progress: number; message: string | null; created_at: string; completed_at: string | null;
 }
 
@@ -19,6 +20,8 @@ export default function Dashboard() {
   const [downloads, setDownloads] = useState<DownloadRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [activeSection, setActiveSection] = useState<'overview' | 'members' | 'downloads'>('overview')
+  const [downloadTypeTab, setDownloadTypeTab] = useState<'all' | 'video' | 'subs' | 'both'>('all')
 
   const load = () => {
     Promise.all([api.adminUsers(), api.adminDownloads()])
@@ -34,9 +37,9 @@ export default function Dashboard() {
 
   const kpis = useMemo(() => {
     const today = toDateKey(new Date().toISOString())
-    const completed = downloads.filter((d) => d.status === 'completed').length
-    const failed = downloads.filter((d) => d.status === 'failed' || d.status === 'error').length
-    const pending = downloads.filter((d) => d.status !== 'completed' && d.status !== 'failed' && d.status !== 'error').length
+    const completed = downloads.filter((d) => d.status === 'done').length
+    const failed = downloads.filter((d) => d.status === 'error').length
+    const pending = downloads.filter((d) => d.status !== 'done' && d.status !== 'error').length
     const total = downloads.length
     const successRate = total > 0 ? Math.round((completed / total) * 100) : 0
     const todayDownloads = downloads.filter((d) => toDateKey(d.created_at) === today).length
@@ -74,18 +77,29 @@ export default function Dashboard() {
   const [filterUser, setFilterUser] = useState<string>('')
   const [filterUrlKeyword, setFilterUrlKeyword] = useState('')
 
-  const filteredDownloads = useMemo(() => {
+  const typedDownloads = useMemo(() => {
     return downloads.filter((d) => {
+      const dt = (d.download_type || 'video').toLowerCase()
+      if (downloadTypeTab === 'all') return true
+      if (downloadTypeTab === 'video') return dt === 'video'
+      if (downloadTypeTab === 'subs') return dt === 'subs'
+      if (downloadTypeTab === 'both') return dt === 'both'
+      return true
+    })
+  }, [downloads, downloadTypeTab])
+
+  const filteredDownloads = useMemo(() => {
+    return typedDownloads.filter((d) => {
       if (filterUser && d.username !== filterUser) return false
       if (filterUrlKeyword.trim() && !d.url.toLowerCase().includes(filterUrlKeyword.trim().toLowerCase())) return false
       return true
     })
-  }, [downloads, filterUser, filterUrlKeyword])
+  }, [typedDownloads, filterUser, filterUrlKeyword])
 
   const downloadUsernames = useMemo(() => {
-    const set = new Set(downloads.map((d) => d.username))
+    const set = new Set(typedDownloads.map((d) => d.username))
     return Array.from(set).sort((a, b) => a.localeCompare(b))
-  }, [downloads])
+  }, [typedDownloads])
 
   const openEditUser = (u: UserRow) => {
     setEditUser(u)
@@ -151,7 +165,36 @@ export default function Dashboard() {
         <span className={styles.lastUpdated}>即時</span>
       </header>
 
-      <section className={styles.kpiSection} aria-label="關鍵指標">
+      <div className={styles.dashLayout}>
+        <aside className={styles.sidebar} aria-label="dashboard menu">
+          <button
+            type="button"
+            className={activeSection === 'overview' ? styles.sidebarBtnActive : styles.sidebarBtn}
+            onClick={() => setActiveSection('overview')}
+          >
+            營運總覽
+          </button>
+          <button
+            type="button"
+            className={activeSection === 'members' ? styles.sidebarBtnActive : styles.sidebarBtn}
+            onClick={() => setActiveSection('members')}
+          >
+            會員
+          </button>
+          <button
+            type="button"
+            className={activeSection === 'downloads' ? styles.sidebarBtnActive : styles.sidebarBtn}
+            onClick={() => setActiveSection('downloads')}
+          >
+            下載紀錄
+          </button>
+        </aside>
+        <div className={styles.dashContent}>
+          <section
+            className={styles.kpiSection}
+            aria-label="關鍵指標"
+            style={{ display: activeSection === 'overview' ? 'block' : 'none' }}
+          >
         <div className={styles.kpiGrid}>
           <div className={styles.kpiCard}>
             <span className={styles.kpiLabel}>總會員數</span>
@@ -176,26 +219,34 @@ export default function Dashboard() {
             </span>
           </div>
         </div>
-      </section>
+          </section>
 
-      <section className={styles.trendSection} aria-label="近七日下載趨勢">
-        <h2 className={styles.trendTitle}>近 7 日下載量</h2>
-        <div className={styles.trendChart}>
-          {kpis.last7Days.map(({ date, count }) => (
-            <div key={date} className={styles.trendBarWrap}>
-              <div
-                className={styles.trendBar}
-                style={{ height: `${Math.max(4, (count / Math.max(1, ...kpis.last7Days.map((d) => d.count))) * 100)}%` }}
-                title={`${date}: ${count} 筆`}
-              />
-              <span className={styles.trendLabel}>{new Date(date + 'T12:00:00').toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })}</span>
-              <span className={styles.trendCount}>{count}</span>
+          <section
+            className={styles.trendSection}
+            aria-label="近七日下載趨勢"
+            style={{ display: activeSection === 'overview' ? 'block' : 'none' }}
+          >
+            <h2 className={styles.trendTitle}>近 7 日下載量</h2>
+            <div className={styles.trendChart}>
+              {kpis.last7Days.map(({ date, count }) => (
+                <div key={date} className={styles.trendBarWrap}>
+                  <div
+                    className={styles.trendBar}
+                    style={{ height: `${Math.max(4, (count / Math.max(1, ...kpis.last7Days.map((d) => d.count))) * 100)}%` }}
+                    title={`${date}: ${count} 筆`}
+                  />
+                  <span className={styles.trendLabel}>{new Date(date + 'T12:00:00').toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })}</span>
+                  <span className={styles.trendCount}>{count}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </section>
+          </section>
 
-      <section className={styles.section} aria-labelledby="users-heading">
+          <section
+            className={styles.section}
+            aria-labelledby="users-heading"
+            style={{ display: activeSection === 'members' ? 'block' : 'none' }}
+          >
         <div className={styles.sectionHead}>
           <h2 id="users-heading">會員列表</h2>
           <button
@@ -242,9 +293,13 @@ export default function Dashboard() {
             </tbody>
           </table>
         </div>
-      </section>
+          </section>
 
-      <section className={styles.section} aria-labelledby="downloads-heading">
+          <section
+            className={styles.section}
+            aria-labelledby="downloads-heading"
+            style={{ display: activeSection === 'downloads' ? 'block' : 'none' }}
+          >
         <div className={styles.sectionHead}>
           <h2 id="downloads-heading">下載紀錄</h2>
           <div className={styles.statusSummary}>
@@ -252,6 +307,37 @@ export default function Dashboard() {
             <span className={styles.statusSummaryItem}><span className={styles.dotError} /> 失敗 {kpis.failed}</span>
             <span className={styles.statusSummaryItem}><span className={styles.dotNeutral} /> 進行中 {kpis.pending}</span>
           </div>
+        </div>
+        
+        <div className={styles.typeTabs} role="tablist" aria-label="下載類型">
+          <button
+            type="button"
+            className={downloadTypeTab === 'all' ? styles.typeTabActive : styles.typeTab}
+            onClick={() => setDownloadTypeTab('all')}
+          >
+            全部
+          </button>
+          <button
+            type="button"
+            className={downloadTypeTab === 'video' ? styles.typeTabActive : styles.typeTab}
+            onClick={() => setDownloadTypeTab('video')}
+          >
+            影片下載
+          </button>
+          <button
+            type="button"
+            className={downloadTypeTab === 'subs' ? styles.typeTabActive : styles.typeTab}
+            onClick={() => setDownloadTypeTab('subs')}
+          >
+            字幕下載
+          </button>
+          <button
+            type="button"
+            className={downloadTypeTab === 'both' ? styles.typeTabActive : styles.typeTab}
+            onClick={() => setDownloadTypeTab('both')}
+          >
+            影片+字幕
+          </button>
         </div>
         <p className={styles.hintSmall}>標題從該筆 URL 的 og:title 取得、描述從 og:description 取得；可編輯或按「從網址取得」重新抓取。</p>
 
@@ -301,6 +387,7 @@ export default function Dashboard() {
                 <th>網址</th>
                 <th>標題</th>
                 <th>描述</th>
+                <th>類型</th>
                 <th>狀態</th>
                 <th>時間</th>
                 <th>操作</th>
@@ -315,7 +402,16 @@ export default function Dashboard() {
                   <td className={styles.cellClip}>{d.og_title ?? d.title ?? '—'}</td>
                   <td className={styles.desc}>{d.og_description || '—'}</td>
                   <td>
-                    <span className={`${styles.statusBadge} ${d.status === 'completed' ? styles.statusSuccess : d.status === 'failed' || d.status === 'error' ? styles.statusError : styles.statusNeutral}`}>
+                    <span className={styles.typeBadge}>
+                      {(d.download_type || 'video') === 'video'
+                        ? '影片'
+                        : (d.download_type || 'video') === 'subs'
+                          ? '字幕'
+                          : '影片+字幕'}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`${styles.statusBadge} ${d.status === 'done' ? styles.statusSuccess : d.status === 'error' ? styles.statusError : styles.statusNeutral}`}>
                       {d.status}
                     </span>
                   </td>
@@ -328,7 +424,9 @@ export default function Dashboard() {
             </tbody>
           </table>
         </div>
-      </section>
+          </section>
+        </div>
+      </div>
 
       {editUser && (
         <div className={styles.modalOverlay} onClick={() => setEditUser(null)}>

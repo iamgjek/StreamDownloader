@@ -135,7 +135,7 @@ export default function Subtitles() {
       return next
     })
     const token = getToken()
-    const url = api.subsDownloadUrl(item, 'zht')
+    const url = api.subsDownloadUrl(item, 'zht', keywordFromSearch)
     const keyword = (keywordFromSearch || '').trim()
     setError('')
     fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} })

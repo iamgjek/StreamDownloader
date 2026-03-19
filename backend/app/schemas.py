@@ -52,6 +52,7 @@ class DownloadLogInfo(BaseModel):
     title: str | None
     og_title: str | None = None
     og_description: str | None = None
+    download_type: str | None = None  # video / subs / both
     status: str
     progress: int
     message: str | None
@@ -77,6 +78,7 @@ class DownloadHistoryItem(BaseModel):
     url: str
     title: str | None  # 標題（og_title 或 title）
     og_description: str | None = None  # 描述
+    download_type: str | None = None  # video / subs / both
     status: str
     created_at: datetime
 

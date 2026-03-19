@@ -21,6 +21,8 @@ class DownloadLog(Base):
     title = Column(String(500), nullable=True)
     og_title = Column(String(500), nullable=True)   # 頁面 og:title
     og_description = Column(Text, nullable=True)    # 頁面 og:description
+    # 對應下載種類：video / subs / both
+    download_type = Column(String(20), nullable=True)
     status = Column(String(50), nullable=False)  # pending, downloading, done, error
     progress = Column(Integer, default=0)  # 0-100
     message = Column(Text, nullable=True)

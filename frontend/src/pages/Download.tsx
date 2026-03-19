@@ -3,7 +3,7 @@ import { api } from '../api/client'
 import styles from './Download.module.css'
 import { trackCtaEvent } from '../analytics/ga'
 
-type HistoryItem = { id: number; url: string; title: string | null; og_description: string | null; status: string; created_at: string }
+type HistoryItem = { id: number; url: string; title: string | null; og_description: string | null; download_type: string | null; status: string; created_at: string }
 
 /** 先選資料夾再存檔時用的 handle 型別（File System Access API） */
 type DownloadDirHandle = {
@@ -37,7 +37,9 @@ export default function Download() {
     setHistoryLoading(true)
     try {
       const res = await api.downloadsHistory(page, historyLimit)
-      setHistory(res.items)
+      // 影片下載頁：移除字幕下載紀錄（download_type = subs）
+      const filtered = (res.items || []).filter((it) => (it.download_type || 'video').toLowerCase() !== 'subs')
+      setHistory(filtered)
       setHistoryTotal(res.total)
       setHistoryPage(res.page)
     } catch {

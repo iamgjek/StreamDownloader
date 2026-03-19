@@ -54,7 +54,7 @@ export const api = {
     file_id?: number
     download_url?: string
     page_url?: string
-  }, lang?: string) => {
+  }, lang?: string, keyword?: string) => {
     const params = new URLSearchParams()
     const source = item.source || 'opensubtitles'
     params.set('source', source)
@@ -65,11 +65,14 @@ export const api = {
       if (item.file_id != null) params.set('file_id', String(item.file_id))
       if (item.download_url) params.set('download_url', item.download_url)
     }
+    if (keyword && keyword.trim()) {
+      params.set('keyword', keyword.trim())
+    }
     const t = getToken()
     return `${API}/subs/download?${params.toString()}${t ? `&token=${encodeURIComponent(t)}` : ''}`
   },
   downloadsHistory: (page = 1, limit = 10) =>
-    request<{ items: Array<{ id: number; url: string; title: string | null; og_description: string | null; status: string; created_at: string }>; total: number; page: number; limit: number }>(
+    request<{ items: Array<{ id: number; url: string; title: string | null; og_description: string | null; download_type: string | null; status: string; created_at: string }>; total: number; page: number; limit: number }>(
       `/downloads/history?page=${page}&limit=${limit}`
     ),
   adminUsers: () => request<Array<{ id: number; email: string; username: string; is_admin: boolean; created_at: string }>>('/admin/users'),
@@ -82,6 +85,7 @@ export const api = {
   adminDownloads: () =>
     request<Array<{
       id: number; user_id: number; username: string; url: string; title: string | null;
+      download_type: string | null;
       og_title: string | null; og_description: string | null;
       status: string; progress: number; message: string | null; created_at: string; completed_at: string | null;
     }>>('/admin/downloads'),
