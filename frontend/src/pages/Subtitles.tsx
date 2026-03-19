@@ -270,7 +270,17 @@ export default function Subtitles() {
           <ul className={styles.historyList}>
             {downloadedSubtitleKeywords.map((it) => (
               <li key={it.keyword}>
-                <span className={styles.historyName}>{it.keyword}</span>
+                <span
+                  className={styles.historyLabel}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setQuery(it.keyword)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') setQuery(it.keyword)
+                  }}
+                >
+                  {it.keyword}
+                </span>
               </li>
             ))}
           </ul>
