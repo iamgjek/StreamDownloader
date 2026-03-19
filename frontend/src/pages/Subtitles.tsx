@@ -18,6 +18,16 @@ type SubItem = {
 
 type DownloadedSubtitleKeyword = { keyword: string; downloaded_at: number }
 
+function AlertIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 9v4" />
+      <path d="M12 17h.01" />
+      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+    </svg>
+  )
+}
+
 export default function Subtitles() {
   const [query, setQuery] = useState('')
   /** 對應「目前 results 是用哪個關鍵字搜尋出來的」，避免下載時 query 被使用者改掉而寫錯 */
@@ -25,6 +35,8 @@ export default function Subtitles() {
   const [results, setResults] = useState<SubItem[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  /** 記錄每筆搜尋結果下載失敗的提示訊息（以 tooltip 形式顯示，避免版面變動） */
+  const [downloadHints, setDownloadHints] = useState<Record<string, string>>({})
   const [downloadedSubtitleKeywords, setDownloadedSubtitleKeywords] = useState<DownloadedSubtitleKeyword[]>(() => {
     try {
       if (typeof window === 'undefined') return []
@@ -87,6 +99,10 @@ export default function Subtitles() {
     })
   }
 
+  const isSubtitlecatNoDirectLinkHint = (msg: string) => {
+    return msg.includes('此頁沒有該語言的直接下載連結') && msg.includes('Subtitle Cat')
+  }
+
   const search = async () => {
     setError('')
     const q = query.trim()
@@ -110,6 +126,13 @@ export default function Subtitles() {
   }
 
   const download = (item: SubItem, keywordFromSearch: string) => {
+    const rowId = item.id
+    setDownloadHints((prev) => {
+      if (!prev[rowId]) return prev
+      const next = { ...prev }
+      delete next[rowId]
+      return next
+    })
     const token = getToken()
     const url = api.subsDownloadUrl(item, 'zht')
     const keyword = (keywordFromSearch || '').trim()
@@ -137,7 +160,15 @@ export default function Subtitles() {
         URL.revokeObjectURL(a.href)
         if (keyword) upsertDownloadedKeyword(keyword)
       })
-      .catch((e) => setError(e instanceof Error ? e.message : '下載失敗'))
+      .catch((e) => {
+        const msg = e instanceof Error ? e.message : '下載失敗'
+        if (item.source === 'subtitlecat' && isSubtitlecatNoDirectLinkHint(msg)) {
+          // 特定提示改用 tooltip + alert icon 顯示
+          setDownloadHints((prev) => ({ ...prev, [rowId]: msg }))
+          return
+        }
+        setError(msg)
+      })
   }
 
   const resultsTotalPages = Math.max(1, Math.ceil(results.length / RESULTS_PAGE_SIZE))
@@ -177,8 +208,19 @@ export default function Subtitles() {
             <h3>符合的字幕（共 {results.length} 筆）</h3>
             <ul className={styles.list}>
               {resultsSlice.map((item) => (
-                <li key={item.id || item.release || String(Math.random())}>
+                <li key={item.id}>
                   <span className={styles.itemName}>{item.release || item.file_name || item.id}</span>
+                  {downloadHints[item.id] && (
+                    <span
+                      className={styles.alertIcon}
+                      role="img"
+                      aria-label="下載提示"
+                      title={downloadHints[item.id]}
+                      tabIndex={0}
+                    >
+                      <AlertIcon />
+                    </span>
+                  )}
                   {item.language && <span className={styles.lang}>{item.language}</span>}
                   {item.source === 'subtitlecat' && (
                     <span className={styles.sourceBadge} title="Subtitle Cat">Subtitle Cat</span>
