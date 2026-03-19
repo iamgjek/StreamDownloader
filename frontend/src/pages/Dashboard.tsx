@@ -21,7 +21,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [activeSection, setActiveSection] = useState<'overview' | 'members' | 'downloads'>('overview')
-  const [downloadTypeTab, setDownloadTypeTab] = useState<'all' | 'video' | 'subs' | 'both'>('all')
+  const [downloadTypeTab, setDownloadTypeTab] = useState<'all' | 'video' | 'subs'>('all')
 
   const load = () => {
     Promise.all([api.adminUsers(), api.adminDownloads()])
@@ -83,7 +83,6 @@ export default function Dashboard() {
       if (downloadTypeTab === 'all') return true
       if (downloadTypeTab === 'video') return dt === 'video'
       if (downloadTypeTab === 'subs') return dt === 'subs'
-      if (downloadTypeTab === 'both') return dt === 'both'
       return true
     })
   }, [downloads, downloadTypeTab])
@@ -330,13 +329,6 @@ export default function Dashboard() {
             onClick={() => setDownloadTypeTab('subs')}
           >
             字幕下載
-          </button>
-          <button
-            type="button"
-            className={downloadTypeTab === 'both' ? styles.typeTabActive : styles.typeTab}
-            onClick={() => setDownloadTypeTab('both')}
-          >
-            影片+字幕
           </button>
         </div>
         <p className={styles.hintSmall}>標題從該筆 URL 的 og:title 取得、描述從 og:description 取得；可編輯或按「從網址取得」重新抓取。</p>
