@@ -151,6 +151,23 @@ export default function Dashboard() {
     }
   }
 
+  const CopyIcon = () => (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  )
+
+  const copyText = async (text: string) => {
+    const v = (text || '').toString()
+    if (!v.trim()) return
+    try {
+      await navigator.clipboard.writeText(v)
+    } catch {
+      // clipboard might be blocked by browser settings
+    }
+  }
+
   if (loading) return <div className={styles.page}><p className={styles.loading}>載入中…</p></div>
   if (error) return <div className={styles.page}><p className={styles.error}>{error}</p></div>
 
@@ -390,9 +407,48 @@ export default function Dashboard() {
                 <tr key={d.id}>
                   <td>{d.id}</td>
                   <td>{d.username}</td>
-                  <td className={styles.url}>{d.url}</td>
-                  <td className={styles.cellClip}>{d.og_title ?? d.title ?? '—'}</td>
-                  <td className={styles.desc}>{d.og_description || '—'}</td>
+                  <td>
+                    <div className={styles.cellWithCopy}>
+                      <span className={styles.url} title={d.url}>{d.url}</span>
+                      <button
+                        type="button"
+                        className={styles.copyIconBtn}
+                        aria-label="複製網址"
+                        title="複製網址"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          copyText(d.url)
+                        }}
+                      >
+                        <CopyIcon />
+                      </button>
+                    </div>
+                  </td>
+                  <td>
+                    <div className={styles.cellWithCopy}>
+                      <span
+                        className={styles.cellClip}
+                        title={(d.og_title ?? d.title ?? '').toString()}
+                      >
+                        {d.og_title ?? d.title ?? '—'}
+                      </span>
+                      <button
+                        type="button"
+                        className={styles.copyIconBtn}
+                        aria-label="複製標題"
+                        title="複製標題"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const t = (d.og_title ?? d.title ?? '').toString()
+                          copyText(t)
+                        }}
+                        disabled={!d.og_title && !d.title}
+                      >
+                        <CopyIcon />
+                      </button>
+                    </div>
+                  </td>
+                  <td className={styles.desc} title={d.og_description || ''}>{d.og_description || '—'}</td>
                   <td>
                     <span className={styles.typeBadge}>
                       {(d.download_type || 'video') === 'video'

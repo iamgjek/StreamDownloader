@@ -624,6 +624,43 @@
   white-space: nowrap;
 }
 
+.cellWithCopy {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.copyIconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 200ms ease, color 200ms ease;
+}
+
+.copyIconBtn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.copyIconBtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.copyIconBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .loading,
 .error {
   text-align: center;

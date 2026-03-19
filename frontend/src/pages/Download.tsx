@@ -3,6 +3,15 @@ import { api } from '../api/client'
 import styles from './Download.module.css'
 import { trackCtaEvent } from '../analytics/ga'
 
+function CopyIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </svg>
+  )
+}
+
 type HistoryItem = { id: number; url: string; title: string | null; og_description: string | null; download_type: string | null; status: string; created_at: string }
 
 /** 先選資料夾再存檔時用的 handle 型別（File System Access API） */
@@ -32,6 +41,16 @@ export default function Download() {
   const [historyPage, setHistoryPage] = useState(1)
   const [historyLoading, setHistoryLoading] = useState(false)
   const historyLimit = 10
+
+  const copyText = async (text: string) => {
+    const v = (text || '').toString()
+    if (!v.trim()) return
+    try {
+      await navigator.clipboard.writeText(v)
+    } catch {
+      // ignore: clipboard might be blocked by browser settings
+    }
+  }
 
   const loadHistory = useCallback(async (page = 1) => {
     setHistoryLoading(true)
@@ -313,8 +332,45 @@ export default function Download() {
                 <tbody>
                   {history.map((item) => (
                     <tr key={item.id}>
-                      <td className={styles.cellUrl} title={item.url}>{item.url}</td>
-                      <td className={styles.cellTitle} title={item.title || ''}>{item.title || '—'}</td>
+                      <td>
+                        <div className={styles.cellWithCopy}>
+                          <span className={styles.cellUrl} title={item.url}>
+                            {item.url}
+                          </span>
+                          <button
+                            type="button"
+                            className={styles.copyIconBtn}
+                            aria-label="複製網址"
+                            title="複製網址"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              copyText(item.url)
+                            }}
+                          >
+                            <CopyIcon />
+                          </button>
+                        </div>
+                      </td>
+                      <td>
+                        <div className={styles.cellWithCopy}>
+                          <span className={styles.cellTitle} title={(item.title || '').toString()}>
+                            {item.title || '—'}
+                          </span>
+                          <button
+                            type="button"
+                            className={styles.copyIconBtn}
+                            aria-label="複製標題"
+                            title="複製標題"
+                            disabled={!item.title}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              copyText(item.title || '')
+                            }}
+                          >
+                            <CopyIcon />
+                          </button>
+                        </div>
+                      </td>
                       <td className={styles.cellDesc} title={item.og_description || ''}>
                         {item.og_description || '—'}
                       </td>
