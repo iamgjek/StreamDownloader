@@ -1,0 +1,16 @@
+[Unit]
+Description=Stream Downloader FastAPI service
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/stream-downloader/backend
+EnvironmentFile=/etc/stream-downloader.env
+ExecStart=/opt/stream-downloader/backend/scripts/run_prod.sh
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
