@@ -6,3 +6,4 @@ backend/users.db
 backend/users.db
 .DS_Store
 *.pem
+deploy/ec2/env.private

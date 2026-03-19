@@ -36,6 +36,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           >
             字幕下載
           </NavLink>
+          <NavLink
+            to="/convert"
+            className={({ isActive }) => (isActive ? styles.navActive : '')}
+            onClick={() => trackCtaEvent({ action: 'layout_nav_convert', label: '格式轉換', location: 'nav' })}
+          >
+            格式轉換
+          </NavLink>
           {token && user?.is_admin && (
             <NavLink
               to="/dashboard"

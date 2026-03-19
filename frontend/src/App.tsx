@@ -3,6 +3,7 @@ import { useAuth } from './hooks/useAuth'
 import Layout from './components/Layout'
 import Download from './pages/Download'
 import Subtitles from './pages/Subtitles'
+import FormatConvert from './pages/FormatConvert'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 
@@ -37,6 +38,7 @@ export default function App() {
           path="/subtitles"
           element={<Subtitles />}
         />
+        <Route path="/convert" element={<FormatConvert />} />
         <Route
           path="/dashboard"
           element={
