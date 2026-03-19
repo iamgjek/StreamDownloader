@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import styles from './Home.module.css'
+import { trackCtaEvent } from '../analytics/ga'
 
 export default function Home() {
   const { token } = useAuth()
@@ -13,16 +14,28 @@ export default function Home() {
           影片在這下、字幕在這找，一站搞定。支援 MissAV、YouTube 跟一堆有的沒的～登入就能用，不用再兩邊跑。
         </p>
         {!token && (
-          <Link to="/login" className={styles.cta}>
+          <Link
+            to="/login"
+            className={styles.cta}
+            onClick={() => trackCtaEvent({ action: 'home_login', label: '登入 / 加入會員', location: 'hero' })}
+          >
             登入 / 加入會員
           </Link>
         )}
         {token && (
           <div className={styles.ctaRow}>
-            <Link to="/download" className={styles.cta}>
+            <Link
+              to="/download"
+              className={styles.cta}
+              onClick={() => trackCtaEvent({ action: 'home_download', label: '影片下載', location: 'hero' })}
+            >
               影片下載
             </Link>
-            <Link to="/subtitles" className={styles.ctaSecondary}>
+            <Link
+              to="/subtitles"
+              className={styles.ctaSecondary}
+              onClick={() => trackCtaEvent({ action: 'home_subtitles', label: '字幕下載', location: 'hero' })}
+            >
               字幕下載
             </Link>
           </div>
@@ -35,7 +48,16 @@ export default function Home() {
         <div className={styles.card}>
           <h3>影片下載</h3>
           <ol>
-            <li>在「<Link to={token ? '/download' : '/login'}>影片下載</Link>」頁面貼上影片網址（支援 YouTube、missav 等）。</li>
+            <li>
+              在「
+              <Link
+                to={token ? '/download' : '/login'}
+                onClick={() => trackCtaEvent({ action: 'home_howto_download', label: '影片下載', location: 'howto' })}
+              >
+                影片下載
+              </Link>
+              」頁面貼上影片網址（支援 YouTube、missav 等）。
+            </li>
             <li>點擊開始下載，即時顯示進度；完成時會儲存為 .mkv 至瀏覽器下載位置（可選擇存放目錄）。</li>
           </ol>
         </div>
@@ -43,7 +65,16 @@ export default function Home() {
         <div className={styles.card}>
           <h3>字幕下載</h3>
           <ol>
-            <li>在「<Link to="/subtitles">字幕下載</Link>」頁面輸入影片檔名或片名（可貼上完整檔名，系統會自動擷取關鍵字搜尋）。</li>
+            <li>
+              在「
+              <Link
+                to="/subtitles"
+                onClick={() => trackCtaEvent({ action: 'home_howto_subtitles', label: '字幕下載', location: 'howto' })}
+              >
+                字幕下載
+              </Link>
+              」頁面輸入影片檔名或片名（可貼上完整檔名，系統會自動擷取關鍵字搜尋）。
+            </li>
             <li>搜尋結果會列出符合的字幕，可預覽檔名與語言。</li>
             <li>選擇要下載的字幕，點擊下載即可儲存到本機。</li>
           </ol>

@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { api } from '../api/client'
 import styles from './Login.module.css'
+import { trackCtaEvent } from '../analytics/ga'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -59,14 +60,22 @@ export default function Login() {
           <button
             type="button"
             className={tab === 'login' ? styles.tabActive : styles.tab}
-            onClick={() => { setTab('login'); setError('') }}
+            onClick={() => {
+              trackCtaEvent({ action: 'login_tab', label: '登入', location: 'login_tabs' })
+              setTab('login')
+              setError('')
+            }}
           >
             登入
           </button>
           <button
             type="button"
             className={tab === 'register' ? styles.tabActive : styles.tab}
-            onClick={() => { setTab('register'); setError('') }}
+            onClick={() => {
+              trackCtaEvent({ action: 'login_tab', label: '加入會員', location: 'login_tabs' })
+              setTab('register')
+              setError('')
+            }}
           >
             加入會員
           </button>
@@ -96,7 +105,13 @@ export default function Login() {
               required
               autoComplete="current-password"
             />
-            <button type="submit" className={styles.btn}>登入</button>
+            <button
+              type="submit"
+              className={styles.btn}
+              onClick={() => trackCtaEvent({ action: 'login_submit', label: '登入', location: 'login_form' })}
+            >
+              登入
+            </button>
           </form>
         )}
 
@@ -134,7 +149,13 @@ export default function Login() {
               required
               autoComplete="new-password"
             />
-            <button type="submit" className={styles.btn}>註冊並登入</button>
+            <button
+              type="submit"
+              className={styles.btn}
+              onClick={() => trackCtaEvent({ action: 'register_submit', label: '註冊並登入', location: 'register_form' })}
+            >
+              註冊並登入
+            </button>
           </form>
         )}
 

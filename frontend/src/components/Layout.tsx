@@ -1,12 +1,14 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import styles from './Layout.module.css'
+import { trackCtaEvent } from '../analytics/ga'
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { token, user, logout } = useAuth()
   const navigate = useNavigate()
 
   const handleLogout = () => {
+    trackCtaEvent({ action: 'layout_logout', label: '登出', location: 'header' })
     logout()
     navigate('/')
   }
@@ -19,10 +21,29 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           Stream Downloader
         </Link>
         <nav className={styles.nav}>
-          <NavLink to="/" className={({ isActive }) => (isActive ? styles.navActive : '')} end>影片下載</NavLink>
-          <NavLink to="/subtitles" className={({ isActive }) => (isActive ? styles.navActive : '')}>字幕下載</NavLink>
+          <NavLink
+            to="/"
+            className={({ isActive }) => (isActive ? styles.navActive : '')}
+            end
+            onClick={() => trackCtaEvent({ action: 'layout_nav_download', label: '影片下載', location: 'nav' })}
+          >
+            影片下載
+          </NavLink>
+          <NavLink
+            to="/subtitles"
+            className={({ isActive }) => (isActive ? styles.navActive : '')}
+            onClick={() => trackCtaEvent({ action: 'layout_nav_subtitles', label: '字幕下載', location: 'nav' })}
+          >
+            字幕下載
+          </NavLink>
           {token && user?.is_admin && (
-            <NavLink to="/dashboard" className={({ isActive }) => (isActive ? styles.navActive : '')}>管理後台</NavLink>
+            <NavLink
+              to="/dashboard"
+              className={({ isActive }) => (isActive ? styles.navActive : '')}
+              onClick={() => trackCtaEvent({ action: 'layout_nav_dashboard', label: '管理後台', location: 'nav' })}
+            >
+              管理後台
+            </NavLink>
           )}
         </nav>
         <div className={styles.githubPromo}>
@@ -48,7 +69,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </button>
             </>
           ) : (
-            <Link to="/login" className={styles.btnPrimary}>
+            <Link
+              to="/login"
+              className={styles.btnPrimary}
+              onClick={() => trackCtaEvent({ action: 'layout_login', label: '登入 / 加入會員', location: 'header' })}
+            >
               登入 / 加入會員
             </Link>
           )}

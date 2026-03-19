@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api/client'
 import styles from './Download.module.css'
+import { trackCtaEvent } from '../analytics/ga'
 
 type HistoryItem = { id: number; url: string; title: string | null; og_description: string | null; status: string; created_at: string }
 
@@ -188,7 +189,10 @@ export default function Download() {
               <button
                 type="button"
                 className={styles.btnSecondary}
-                onClick={pickDownloadDir}
+                onClick={() => {
+                  trackCtaEvent({ action: 'download_pick_dir', label: '選擇下載位置', location: 'download' })
+                  pickDownloadDir()
+                }}
                 disabled={isLoading}
                 aria-label="選擇要存放檔案的資料夾"
               >
@@ -198,7 +202,11 @@ export default function Download() {
                 <button
                   type="button"
                   className={styles.btnLink}
-                  onClick={() => { setDownloadDirHandle(null); setDownloadDirName('') }}
+                  onClick={() => {
+                    trackCtaEvent({ action: 'download_clear_dir', label: '改為瀏覽器預設', location: 'download' })
+                    setDownloadDirHandle(null)
+                    setDownloadDirName('')
+                  }}
                   aria-label="清除已選資料夾，改為瀏覽器預設下載"
                 >
                   改為瀏覽器預設
@@ -223,7 +231,10 @@ export default function Download() {
           <button
             type="button"
             className={styles.btn}
-            onClick={startDownload}
+            onClick={() => {
+              trackCtaEvent({ action: 'download_start', label: '開始下載', location: 'download' })
+              startDownload()
+            }}
             disabled={isLoading}
             aria-busy={isLoading}
           >
@@ -233,7 +244,10 @@ export default function Download() {
             <button
               type="button"
               className={styles.btnCancel}
-              onClick={cancelDownload}
+              onClick={() => {
+                trackCtaEvent({ action: 'download_cancel', label: '中斷下載', location: 'download' })
+                cancelDownload()
+              }}
               aria-label="中斷下載"
             >
               中斷下載

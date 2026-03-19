@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { api } from '../api/client'
 import styles from './Dashboard.module.css'
+import { trackCtaEvent } from '../analytics/ga'
 
 type UserRow = { id: number; email: string; username: string; is_admin: boolean; created_at: string }
 type DownloadRow = {
@@ -197,7 +198,16 @@ export default function Dashboard() {
       <section className={styles.section} aria-labelledby="users-heading">
         <div className={styles.sectionHead}>
           <h2 id="users-heading">會員列表</h2>
-          <button type="button" className={styles.btnPrimary} onClick={() => setAddUserOpen(true)}>新增會員</button>
+          <button
+            type="button"
+            className={styles.btnPrimary}
+            onClick={() => {
+              trackCtaEvent({ action: 'dashboard_add_user_open', label: '新增會員', location: 'dashboard' })
+              setAddUserOpen(true)
+            }}
+          >
+            新增會員
+          </button>
         </div>
         <div className={styles.tableWrap}>
           <table className={styles.table}>
@@ -336,7 +346,16 @@ export default function Dashboard() {
             </label>
             <div className={styles.modalActions}>
               <button type="button" className={styles.btnSecondary} onClick={() => setEditUser(null)}>取消</button>
-              <button type="button" className={styles.btnPrimary} onClick={saveUser}>儲存</button>
+              <button
+                type="button"
+                className={styles.btnPrimary}
+                onClick={() => {
+                  trackCtaEvent({ action: 'dashboard_edit_user_save', label: '儲存', location: 'dashboard' })
+                  saveUser()
+                }}
+              >
+                儲存
+              </button>
             </div>
           </div>
         </div>
@@ -354,7 +373,16 @@ export default function Dashboard() {
             <input type="password" className={styles.input} value={addUserForm.password} onChange={(e) => setAddUserForm((f) => ({ ...f, password: e.target.value }))} required />
             <div className={styles.modalActions}>
               <button type="button" className={styles.btnSecondary} onClick={() => setAddUserOpen(false)}>取消</button>
-              <button type="button" className={styles.btnPrimary} onClick={addUser}>新增</button>
+              <button
+                type="button"
+                className={styles.btnPrimary}
+                onClick={() => {
+                  trackCtaEvent({ action: 'dashboard_add_user_confirm', label: '新增', location: 'dashboard' })
+                  addUser()
+                }}
+              >
+                新增
+              </button>
             </div>
           </div>
         </div>

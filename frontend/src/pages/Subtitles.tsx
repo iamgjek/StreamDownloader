@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { api, getToken } from '../api/client'
 import styles from './Subtitles.module.css'
+import { trackCtaEvent } from '../analytics/ga'
 
 const RESULTS_PAGE_SIZE = 5
 const SUBTITLE_KEYWORD_STORAGE_KEY = 'stream_dl_subtitle_downloaded_keywords_v1'
@@ -196,7 +197,15 @@ export default function Subtitles() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && search()}
           />
-          <button type="button" className={styles.btn} onClick={search} disabled={loading}>
+          <button
+            type="button"
+            className={styles.btn}
+            onClick={() => {
+              trackCtaEvent({ action: 'subtitles_search', label: `搜尋：${query || ''}`, location: 'search' })
+              search()
+            }}
+            disabled={loading}
+          >
             {loading ? '搜尋中…' : '搜尋'}
           </button>
         </div>
@@ -228,7 +237,14 @@ export default function Subtitles() {
                   <button
                     type="button"
                     className={styles.dlBtn}
-                    onClick={() => download(item, activeSearchKeyword)}
+                    onClick={() => {
+                      trackCtaEvent({
+                        action: 'subtitles_download',
+                        label: `下載：${activeSearchKeyword || '未知關鍵字'}`,
+                        location: 'results',
+                      })
+                      download(item, activeSearchKeyword)
+                    }}
                   >
                     下載
                   </button>
