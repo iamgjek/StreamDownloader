@@ -154,8 +154,20 @@ export default function Download() {
             const disp = res.headers.get('Content-Disposition')
             let filename = 'download.mkv'
             if (disp) {
-              const m = disp.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i) ?? disp.match(/filename=([^;]+)/)
-              if (m) filename = m[1].trim().replace(/^["']|["']$/g, '')
+              const m =
+                disp.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i) ??
+                disp.match(/filename=([^;]+)/)
+              if (m) {
+                const raw = m[1].trim().replace(/^["']|["']$/g, '')
+                // Some servers return RFC5987 encoded filename*: e.g. My%20Title.mkv
+                let decoded = raw
+                try {
+                  decoded = decodeURIComponent(raw)
+                } catch {
+                  // fallback: keep raw
+                }
+                filename = decoded
+              }
             }
             await saveBlobToTarget(blob, filename)
           } catch (e) {
@@ -301,9 +313,11 @@ export default function Download() {
                 <tbody>
                   {history.map((item) => (
                     <tr key={item.id}>
-                      <td className={styles.cellUrl}>{item.url}</td>
-                      <td className={styles.cellTitle}>{item.title || '—'}</td>
-                      <td className={styles.cellDesc}>{item.og_description || '—'}</td>
+                      <td className={styles.cellUrl} title={item.url}>{item.url}</td>
+                      <td className={styles.cellTitle} title={item.title || ''}>{item.title || '—'}</td>
+                      <td className={styles.cellDesc} title={item.og_description || ''}>
+                        {item.og_description || '—'}
+                      </td>
                       <td>{item.status === 'done' ? '完成' : item.status === 'error' ? '失敗' : item.status === 'cancelled' ? '已取消' : item.status === 'downloading' ? '下載中' : item.status}</td>
                       <td className={styles.cellTime}>{new Date(item.created_at).toLocaleString('zh-TW')}</td>
                     </tr>
