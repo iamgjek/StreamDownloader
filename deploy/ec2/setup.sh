@@ -18,12 +18,22 @@ APP_GROUP="${APP_GROUP:-ubuntu}"
 BACKEND_DIR="$APP_DIR/backend"
 ENV_FILE="/etc/stream-downloader.env"
 SYSTEMD_FILE="/etc/systemd/system/stream-downloader-api.service"
-NGINX_SITE="/etc/nginx/sites-available/stream-downloader"
-NGINX_LINK="/etc/nginx/sites-enabled/stream-downloader"
 
 echo "==> 安裝系統套件"
-apt-get update
-apt-get install -y python3 python3-venv python3-pip ffmpeg nginx git curl
+if command -v apt-get >/dev/null 2>&1; then
+  PKG_MANAGER="apt"
+  apt-get update
+  apt-get install -y python3 python3-venv python3-pip ffmpeg nginx git curl
+elif command -v dnf >/dev/null 2>&1; then
+  PKG_MANAGER="dnf"
+  dnf install -y python3 python3-pip ffmpeg nginx git curl
+elif command -v yum >/dev/null 2>&1; then
+  PKG_MANAGER="yum"
+  yum install -y python3 python3-pip ffmpeg nginx git curl
+else
+  echo "找不到支援的套件管理器（apt-get/dnf/yum）"
+  exit 1
+fi
 
 echo "==> 建立後端 venv 並安裝 requirements"
 mkdir -p "$BACKEND_DIR/data"
@@ -49,10 +59,20 @@ systemctl daemon-reload
 systemctl enable stream-downloader-api
 
 echo "==> 安裝 Nginx site"
-cp "$APP_DIR/deploy/ec2/nginx.conf" "$NGINX_SITE"
-ln -sf "$NGINX_SITE" "$NGINX_LINK"
-if [[ -f /etc/nginx/sites-enabled/default ]]; then
-  rm -f /etc/nginx/sites-enabled/default
+if [[ "$PKG_MANAGER" == "apt" ]]; then
+  NGINX_SITE="/etc/nginx/sites-available/stream-downloader"
+  NGINX_LINK="/etc/nginx/sites-enabled/stream-downloader"
+  cp "$APP_DIR/deploy/ec2/nginx.conf" "$NGINX_SITE"
+  ln -sf "$NGINX_SITE" "$NGINX_LINK"
+  if [[ -f /etc/nginx/sites-enabled/default ]]; then
+    rm -f /etc/nginx/sites-enabled/default
+  fi
+else
+  NGINX_SITE="/etc/nginx/conf.d/stream-downloader.conf"
+  cp "$APP_DIR/deploy/ec2/nginx.conf" "$NGINX_SITE"
+  if [[ -f /etc/nginx/conf.d/default.conf ]]; then
+    rm -f /etc/nginx/conf.d/default.conf
+  fi
 fi
 nginx -t
 systemctl enable nginx
