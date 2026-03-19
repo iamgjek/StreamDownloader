@@ -227,3 +227,26 @@ sudo journalctl -u stream-downloader-api -f
 1. 更新程式碼
 2. `sudo systemctl restart stream-downloader-api`
 
+---
+
+## 9) 更新程式碼後「快速重部署後端」（建議）
+
+當你更新了後端程式（例如：新增欄位/記錄邏輯、修改進度訊息格式、字幕下載記錄等），建議在 EC2 上用以下方式重部署後端：
+
+1. 登入 EC2 後進入專案目錄（例如 `/opt/stream-downloader`）
+2. 拉最新程式碼（例如 `git pull`）
+3. 執行：
+
+```bash
+sudo bash deploy/ec2/redeploy-backend.sh
+```
+
+此腳本會：
+
+- 若 `backend/venv` 不存在就建立
+- 重新安裝 `backend/requirements.txt` 依賴
+- 重啟 `stream-downloader-api`
+- 顯示服務狀態與建議驗證方式（`/docs`）
+
+如果你只改前端（而前端是用 Vercel 部署），EC2 通常不需要重部署後端。
+
