@@ -1,5 +1,6 @@
 import os
 import re
+import time
 import zipfile
 import tempfile
 import gzip
@@ -263,16 +264,84 @@ def _progress_hook_factory(callback, cancelled_check: Callable[[], bool] | None 
     if not callback and not cancelled_check:
         return None
 
+    # 為避免高頻率 progress 更新造成 DB 寫入壓力，這裡做節流
+    # 你期望「每秒更新一次」，預設用 1.0 秒；
+    # 若發現效能不足，可把 PROGRESS_UPDATE_MIN_INTERVAL_SECONDS 調大（例如 1.5 / 2.0）。
+    min_interval_sec = float(os.environ.get("PROGRESS_UPDATE_MIN_INTERVAL_SECONDS", "1.0"))
+    last_emit_ts = 0.0
+
+    ansi_re = re.compile(r"\x1b\[[0-9;]*m")
+
+    def format_bytes(num_bytes: float) -> str:
+        if num_bytes <= 0:
+            return "0B"
+        units = ["B", "KB", "MB", "GB", "TB"]
+        idx = 0
+        n = float(num_bytes)
+        while n >= 1024.0 and idx < len(units) - 1:
+            n /= 1024.0
+            idx += 1
+        if idx <= 0:
+            return f"{int(n)}{units[idx]}"
+        return f"{n:.2f}{units[idx]}"
+
+    def format_rate(bytes_per_sec: float) -> str:
+        # 回傳含 /s 的字串：例如 2.14MB/s
+        return f"{format_bytes(bytes_per_sec)}/s"
+
+    def format_eta(seconds: float) -> str:
+        s = int(seconds)
+        if s < 0:
+            s = 0
+        m, sec = divmod(s, 60)
+        if m < 60:
+            return f"{m}:{sec:02d}"
+        h, m2 = divmod(m, 60)
+        return f"{h}:{m2:02d}:{sec:02d}"
+
+    def normalize_iec_units(s: str) -> str:
+        # yt-dlp 可能回傳 GiB/MiB/KiB，此處轉成 GB/MB/KB 以符合你期望的顯示風格
+        return (
+            s.replace("KiB", "KB")
+            .replace("MiB", "MB")
+            .replace("GiB", "GB")
+            .replace("TiB", "TB")
+        )
+
+    def emit(pct: int, message: str) -> None:
+        nonlocal last_emit_ts
+        now = time.monotonic()
+        if pct >= 100 or (now - last_emit_ts) >= min_interval_sec:
+            last_emit_ts = now
+            callback(pct, message)
+
     def progress_hook(d):
         if cancelled_check and cancelled_check():
             raise DownloadCancelled()
         if callback:
             if d.get("status") == "downloading":
+                total_bytes = d.get("total_bytes") or d.get("total_bytes_estimate")
+                downloaded_bytes = d.get("downloaded_bytes") or d.get("downloaded_bytes_estimate")
+                speed = d.get("speed")
+                eta = d.get("eta")
+
+                # frag 資訊通常只在某些分段下載（如 HLS）會出現
+                frag_index = d.get("fragment_index")
+                frag_count = d.get("fragment_count")
+                frag_str = ""
+                if frag_index is not None and frag_count:
+                    try:
+                        fi = int(frag_index)
+                        fc = int(frag_count)
+                        # yt-dlp 可能是 0-based，這裡顯示成較直覺的 1-based
+                        frag_str = f" (frag {fi + 1}/{fc})"
+                    except Exception:
+                        frag_str = ""
+
                 if d.get("total_bytes"):
                     pct = min(100, int(d.get("downloaded_bytes", 0) * 100 / d["total_bytes"]))
-                    msg = d.get("_percent_str") or f"{pct}%"
                 else:
-                    msg = d.get("_percent_str") or "下載中…"
+                    msg = ""
                     # 無 total_bytes 時（如 HLS fragment）從 _percent_str 或 fragment 推算進度，讓 UI 與後端一致
                     pct = 0
                     percent_str = d.get("_percent_str") or ""
@@ -283,9 +352,45 @@ def _progress_hook_factory(callback, cancelled_check: Callable[[], bool] | None 
                         fc, fi = d["fragment_count"], d["fragment_index"]
                         if fc > 0:
                             pct = min(100, int(fi * 100 / fc))
-                callback(pct, msg)
+
+                # 依期望格式組出訊息（用 yt-dlp 提供欄位，避免 _percent_str 的 ANSI 顏色字）
+                speed_str = d.get("_speed_str")
+                eta_str = d.get("_eta_str")
+                downloaded_str = d.get("_downloaded_bytes_str")
+
+                if downloaded_str and isinstance(downloaded_str, str):
+                    downloaded_fmt = normalize_iec_units(downloaded_str.strip())
+                elif isinstance(downloaded_bytes, (int, float)) and downloaded_bytes > 0:
+                    downloaded_fmt = format_bytes(downloaded_bytes)
+                else:
+                    downloaded_fmt = None
+
+                if speed_str and isinstance(speed_str, str):
+                    speed_fmt = normalize_iec_units(speed_str.strip())
+                elif isinstance(speed, (int, float)) and speed > 0:
+                    speed_fmt = format_rate(speed)
+                else:
+                    speed_fmt = None
+
+                if eta_str and isinstance(eta_str, str):
+                    eta_fmt = eta_str.strip()
+                elif isinstance(eta, (int, float)) and eta >= 0:
+                    eta_fmt = format_eta(eta)
+                else:
+                    eta_fmt = None
+
+                if downloaded_fmt and speed_fmt and eta_fmt:
+                    msg = f"{downloaded_fmt} at {speed_fmt} ETA {eta_fmt}{frag_str}"
+                else:
+                    # 最後備援：抓 _percent_str 中的數字（移除 ANSI）
+                    percent_fallback = d.get("_percent_str") or ""
+                    percent_fallback = ansi_re.sub("", percent_fallback)
+                    m2 = re.search(r"(\d+(?:\.\d+)?)\s*%?", percent_fallback)
+                    msg = f"{m2.group(1)}%" if m2 else "下載中…"
+
+                emit(pct, msg)
             elif d.get("status") == "finished":
-                callback(100, "合併檔案中…")
+                emit(100, "合併檔案中…")
     return progress_hook
 
 
