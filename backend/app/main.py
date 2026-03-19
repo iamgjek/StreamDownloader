@@ -512,7 +512,6 @@ def download_result(
 def subs_search(
     q: str = "",
     lang: str = "zht",
-    current_user: User = Depends(get_current_user),
 ):
     """依檔名/片名搜尋字幕，列出符合的結果供預覽。"""
     query = (q or "").strip()
@@ -529,7 +528,6 @@ def subs_download(
     source: str = "opensubtitles",
     page_url: str | None = None,
     lang: str = "zht",
-    current_user: User = Depends(get_current_user),
 ):
     """下載單一字幕檔到本地（由瀏覽器儲存）。支援 OpenSubtitles 與 Subtitle Cat。"""
     if source == "subtitlecat":

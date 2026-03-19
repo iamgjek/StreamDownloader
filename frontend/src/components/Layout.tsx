@@ -20,13 +20,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </Link>
         <nav className={styles.nav}>
           <NavLink to="/" className={({ isActive }) => (isActive ? styles.navActive : '')} end>影片下載</NavLink>
-          {token && (
-            <>
-              <NavLink to="/subtitles" className={({ isActive }) => (isActive ? styles.navActive : '')}>字幕下載</NavLink>
-              {user?.is_admin && (
-                <NavLink to="/dashboard" className={({ isActive }) => (isActive ? styles.navActive : '')}>管理後台</NavLink>
-              )}
-            </>
+          <NavLink to="/subtitles" className={({ isActive }) => (isActive ? styles.navActive : '')}>字幕下載</NavLink>
+          {token && user?.is_admin && (
+            <NavLink to="/dashboard" className={({ isActive }) => (isActive ? styles.navActive : '')}>管理後台</NavLink>
           )}
         </nav>
         <div className={styles.githubPromo}>

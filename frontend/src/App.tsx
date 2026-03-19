@@ -35,11 +35,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route
           path="/subtitles"
-          element={
-            <Protected>
-              <Subtitles />
-            </Protected>
-          }
+          element={<Subtitles />}
         />
         <Route
           path="/dashboard"

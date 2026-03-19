@@ -43,7 +43,7 @@ export default function Home() {
         <div className={styles.card}>
           <h3>字幕下載</h3>
           <ol>
-            <li>在「<Link to={token ? '/subtitles' : '/login'}>字幕下載</Link>」頁面輸入影片檔名或片名（可貼上完整檔名，系統會自動擷取關鍵字搜尋）。</li>
+            <li>在「<Link to="/subtitles">字幕下載</Link>」頁面輸入影片檔名或片名（可貼上完整檔名，系統會自動擷取關鍵字搜尋）。</li>
             <li>搜尋結果會列出符合的字幕，可預覽檔名與語言。</li>
             <li>選擇要下載的字幕，點擊下載即可儲存到本機。</li>
           </ol>
