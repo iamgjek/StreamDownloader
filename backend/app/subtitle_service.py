@@ -1,6 +1,7 @@
 """
 字幕搜尋：依檔名/片名查詢，並可下載 .srt。
-來源：OpenSubtitles REST API（需設定 OPENSUBTITLES_API_KEY）、Subtitle Cat（https://www.subtitlecat.com/）。
+來源：OpenSubtitles REST API（需設定 OPENSUBTITLES_API_KEY）、Subtitle Cat（https://www.subtitlecat.com/）、
+Subtitle Nexus（https://subtitlenexus.com/zh-tw/，提供搜尋入口）。
 """
 import logging
 import os
@@ -38,6 +39,10 @@ LANG_TO_SUFFIX = {
 }
 # 允許的語言（僅此兩種）
 SUPPORTED_SUBTITLE_LANGS = ("zht", "zhs")
+
+# ---------- Subtitle Nexus ----------
+SUBTITLENEXUS_SEARCH_TW = "https://subtitlenexus.com/zh-tw/"
+SUBTITLENEXUS_SEARCH_CN = "https://subtitlenexus.com/zh-cn/"
 
 
 def _query_from_filename(filename: str) -> str:
@@ -230,6 +235,26 @@ def download_subtitlecat(page_url: str, lang: str = "zht") -> tuple[bytes | None
     return None, None
 
 
+def search_subtitlenexus(query: str, lang: str = "zht") -> list[dict[str, Any]]:
+    """
+    Subtitle Nexus 目前會阻擋伺服器端機器人存取（Cloudflare challenge），
+    因此此處提供「搜尋入口」結果，讓前端可一鍵開啟來源網站進行人工下載。
+    """
+    q = (query or "").strip()
+    if not q:
+        return []
+    base = SUBTITLENEXUS_SEARCH_CN if _normalize_subtitle_lang(lang) == "zhs" else SUBTITLENEXUS_SEARCH_TW
+    page_url = f"{base}?s={requests.utils.quote(_query_from_filename(q))}"
+    return [{
+        "source": "subtitlenexus",
+        "id": f"subtitlenexus-{abs(hash(page_url))}",
+        "page_url": page_url,
+        "release": f"Subtitle Nexus：{q}",
+        "language": "繁中/簡中",
+        "file_name": "subtitle.srt",
+    }]
+
+
 # ---------- 統一介面（向後相容） ----------
 def _normalize_subtitle_lang(lang: str) -> str:
     """僅支援 zh-TW(zht)、zh-CN(zhs)，其餘視為 zht。"""
@@ -243,8 +268,8 @@ def _normalize_subtitle_lang(lang: str) -> str:
 
 def search_subtitles(query: str, lang: str = "zht") -> list[dict[str, Any]]:
     """
-    依關鍵字搜尋字幕，合併 OpenSubtitles 與 Subtitle Cat 結果。
-    僅支援繁中(zht)、簡中(zhs)。每項含 source；Subtitle Cat 項含 page_url。
+    依關鍵字搜尋字幕，合併 OpenSubtitles、Subtitle Cat 與 Subtitle Nexus 結果。
+    僅支援繁中(zht)、簡中(zhs)。每項含 source；Subtitle Cat / Subtitle Nexus 項含 page_url。
     """
     combined: list[dict[str, Any]] = []
     lang = _normalize_subtitle_lang(lang)
@@ -262,6 +287,11 @@ def search_subtitles(query: str, lang: str = "zht") -> list[dict[str, Any]]:
     subtitlecat = search_subtitlecat(q, lang)
     for it in subtitlecat:
         it.setdefault("source", "subtitlecat")
+        combined.append(it)
+
+    subtitlenexus = search_subtitlenexus(q, lang)
+    for it in subtitlenexus:
+        it.setdefault("source", "subtitlenexus")
         combined.append(it)
 
     return combined

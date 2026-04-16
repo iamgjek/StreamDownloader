@@ -17,6 +17,12 @@ type SubItem = {
   page_url?: string
 }
 
+function getSourceLabel(source?: string): string | null {
+  if (source === 'subtitlecat') return 'Subtitle Cat'
+  if (source === 'subtitlenexus') return 'Subtitle Nexus'
+  return null
+}
+
 type DownloadedSubtitleKeyword = { keyword: string; downloaded_at: number }
 
 function AlertIcon() {
@@ -172,6 +178,11 @@ export default function Subtitles() {
       })
   }
 
+  const openSourcePage = (item: SubItem) => {
+    if (!item.page_url) return
+    window.open(item.page_url, '_blank', 'noopener,noreferrer')
+  }
+
   const resultsTotalPages = Math.max(1, Math.ceil(results.length / RESULTS_PAGE_SIZE))
   const resultsSlice = results.slice(
     (resultsPage - 1) * RESULTS_PAGE_SIZE,
@@ -231,23 +242,47 @@ export default function Subtitles() {
                     </span>
                   )}
                   {item.language && <span className={styles.lang}>{item.language}</span>}
-                  {item.source === 'subtitlecat' && (
-                    <span className={styles.sourceBadge} title="Subtitle Cat">Subtitle Cat</span>
+                  {getSourceLabel(item.source) && (
+                    <span className={styles.sourceBadge} title={getSourceLabel(item.source) || ''}>
+                      {getSourceLabel(item.source)}
+                    </span>
                   )}
-                  <button
-                    type="button"
-                    className={styles.dlBtn}
-                    onClick={() => {
-                      trackCtaEvent({
-                        action: 'subtitles_download',
-                        label: `下載：${activeSearchKeyword || '未知關鍵字'}`,
-                        location: 'results',
-                      })
-                      download(item, activeSearchKeyword)
-                    }}
-                  >
-                    下載
-                  </button>
+                  {item.source === 'subtitlenexus' && (
+                    <span className={styles.externalBadge} title="需前往來源網站下載">
+                      外部下載
+                    </span>
+                  )}
+                  {item.source === 'subtitlenexus' ? (
+                    <button
+                      type="button"
+                      className={styles.dlBtn}
+                      onClick={() => {
+                        trackCtaEvent({
+                          action: 'subtitles_open_source',
+                          label: `前往來源：${activeSearchKeyword || '未知關鍵字'}`,
+                          location: 'results',
+                        })
+                        openSourcePage(item)
+                      }}
+                    >
+                      前往來源
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className={styles.dlBtn}
+                      onClick={() => {
+                        trackCtaEvent({
+                          action: 'subtitles_download',
+                          label: `下載：${activeSearchKeyword || '未知關鍵字'}`,
+                          location: 'results',
+                        })
+                        download(item, activeSearchKeyword)
+                      }}
+                    >
+                      下載
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
