@@ -55,6 +55,15 @@ systemctl restart "$SYSTEMD_SERVICE"
 echo "==> 查看狀態"
 systemctl --no-pager --full status "$SYSTEMD_SERVICE" || true
 
-echo "完成。建議驗證："
-echo "  curl http://127.0.0.1:8000/docs"
+echo "==> 等待 API 就緒"
+for i in $(seq 1 30); do
+  if curl -fsS http://127.0.0.1:8000/docs >/dev/null 2>&1; then
+    echo "完成。API 已就緒：http://127.0.0.1:8000/docs"
+    exit 0
+  fi
+  sleep 2
+done
 
+echo "Health check failed: API did not become ready within 60s"
+journalctl -u "$SYSTEMD_SERVICE" -n 20 --no-pager || true
+exit 1
