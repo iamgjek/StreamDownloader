@@ -20,6 +20,7 @@ type SubItem = {
 function getSourceLabel(source?: string): string | null {
   if (source === 'subtitlecat') return 'Subtitle Cat'
   if (source === 'subtitlenexus') return 'Subtitle Nexus'
+  if (source === 'avsubtitles') return 'AVSubtitles'
   return null
 }
 

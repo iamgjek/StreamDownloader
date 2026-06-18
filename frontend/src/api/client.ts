@@ -58,7 +58,7 @@ export const api = {
     const params = new URLSearchParams()
     const source = item.source || 'opensubtitles'
     params.set('source', source)
-    if (source === 'subtitlecat' && item.page_url) {
+    if ((source === 'subtitlecat' || source === 'avsubtitles') && item.page_url) {
       params.set('page_url', item.page_url)
       params.set('lang', lang || 'zht')
     } else {

@@ -552,10 +552,10 @@ def subs_download(
     token: str | None = Query(None, alias="token"),
     db: Session = Depends(get_db),
 ):
-    """下載單一字幕檔到本地（由瀏覽器儲存）。支援 OpenSubtitles 與 Subtitle Cat。"""
-    if source == "subtitlecat":
+    """下載單一字幕檔到本地（由瀏覽器儲存）。支援 OpenSubtitles、Subtitle Cat 與 AVSubtitles。"""
+    if source in ("subtitlecat", "avsubtitles"):
         if not page_url:
-            raise HTTPException(status_code=400, detail="Subtitle Cat 下載請提供 page_url")
+            raise HTTPException(status_code=400, detail=f"{source} 下載請提供 page_url")
         content, filename = download_subtitle_file(
             source=source, page_url=page_url, lang=lang
         )
@@ -568,6 +568,11 @@ def subs_download(
             raise HTTPException(
                 status_code=404,
                 detail="此頁沒有該語言的直接下載連結（Subtitle Cat 繁中/簡中可能僅提供「翻譯」、無現成 .srt 可下載，請改選其它語言或來源）",
+            )
+        if source == "avsubtitles":
+            raise HTTPException(
+                status_code=404,
+                detail="無法從 AVSubtitles 取得字幕檔（該字幕可能已下架或暫時無法下載）",
             )
         raise HTTPException(
             status_code=404,
