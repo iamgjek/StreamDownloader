@@ -4,8 +4,11 @@ import { useAuth } from '../hooks/useAuth'
 import { api } from '../api/client'
 import styles from './Login.module.css'
 import { trackCtaEvent } from '../analytics/ga'
+import { usePageMeta } from '../hooks/usePageMeta'
+import { PAGE_META } from '../seo/pageMeta'
 
 export default function Login() {
+  usePageMeta(PAGE_META.login)
   const navigate = useNavigate()
   const { setToken } = useAuth()
   const [tab, setTab] = useState<'login' | 'register'>('login')

@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { api, getToken } from '../api/client'
 import styles from './Subtitles.module.css'
 import { trackCtaEvent } from '../analytics/ga'
+import { usePageMeta } from '../hooks/usePageMeta'
+import { PAGE_META } from '../seo/pageMeta'
 
 const RESULTS_PAGE_SIZE = 5
 const SUBTITLE_KEYWORD_STORAGE_KEY = 'stream_dl_subtitle_downloaded_keywords_v1'
@@ -9,6 +11,7 @@ const SUBTITLE_KEYWORD_STORAGE_KEY = 'stream_dl_subtitle_downloaded_keywords_v1'
 type SubItem = {
   id: string
   source?: string
+  lang_code?: string
   file_id?: number
   release?: string
   language?: string
@@ -37,6 +40,7 @@ function AlertIcon() {
 }
 
 export default function Subtitles() {
+  usePageMeta(PAGE_META.subtitles)
   const [query, setQuery] = useState('')
   /** 對應「目前 results 是用哪個關鍵字搜尋出來的」，避免下載時 query 被使用者改掉而寫錯 */
   const [activeSearchKeyword, setActiveSearchKeyword] = useState('')
@@ -134,7 +138,7 @@ export default function Subtitles() {
   }
 
   const download = (item: SubItem, keywordFromSearch: string) => {
-    const rowId = item.id
+    const rowId = `${item.id}-${item.lang_code || item.language || ''}`
     setDownloadHints((prev) => {
       if (!prev[rowId]) return prev
       const next = { ...prev }
@@ -142,7 +146,7 @@ export default function Subtitles() {
       return next
     })
     const token = getToken()
-    const url = api.subsDownloadUrl(item, 'zht', keywordFromSearch)
+    const url = api.subsDownloadUrl(item, item.lang_code || 'zht', keywordFromSearch)
     const keyword = (keywordFromSearch || '').trim()
     setError('')
     fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
@@ -229,7 +233,7 @@ export default function Subtitles() {
             <h3>符合的字幕（共 {results.length} 筆）</h3>
             <ul className={styles.list}>
               {resultsSlice.map((item) => (
-                <li key={item.id} className={styles.resultItem}>
+                <li key={`${item.id}-${item.lang_code || item.language || ''}`} className={styles.resultItem}>
                   <div className={styles.resultMain}>
                     <span className={styles.itemName}>{item.release || item.file_name || item.id}</span>
                     {downloadHints[item.id] && (

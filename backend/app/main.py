@@ -556,14 +556,18 @@ def subs_download(
     if source in ("subtitlecat", "avsubtitles"):
         if not page_url:
             raise HTTPException(status_code=400, detail=f"{source} 下載請提供 page_url")
-        content, filename = download_subtitle_file(
+        content, filename, prepare_err = download_subtitle_file(
             source=source, page_url=page_url, lang=lang
         )
     else:
         if file_id is None and not download_url:
             raise HTTPException(status_code=400, detail="請提供 file_id 或 download_url")
-        content, filename = download_subtitle_file(file_id=file_id, download_url=download_url)
+        content, filename, prepare_err = download_subtitle_file(
+            file_id=file_id, download_url=download_url
+        )
     if content is None:
+        if prepare_err:
+            raise HTTPException(status_code=422, detail=prepare_err)
         if source == "subtitlecat":
             raise HTTPException(
                 status_code=404,

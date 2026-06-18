@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { api } from '../api/client'
 import styles from './Download.module.css'
 import { trackCtaEvent } from '../analytics/ga'
+import { usePageMeta } from '../hooks/usePageMeta'
+import { PAGE_META } from '../seo/pageMeta'
 
 function CopyIcon() {
   return (
@@ -25,6 +27,7 @@ type DownloadDirHandle = {
 const supportsPickDir = typeof window !== 'undefined' && 'showDirectoryPicker' in window
 
 export default function Download() {
+  usePageMeta(PAGE_META.download)
   const [url, setUrl] = useState('')
   const [jobId, setJobId] = useState<number | null>(null)
   const [status, setStatus] = useState('')

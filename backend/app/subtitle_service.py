@@ -9,6 +9,7 @@ import logging
 import os
 import re
 import zipfile
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 import requests
@@ -43,6 +44,12 @@ LANG_TO_SUFFIX = {
 # 允許的語言（僅此兩種）
 SUPPORTED_SUBTITLE_LANGS = ("zht", "zhs")
 
+# 字幕搜尋並行設定
+_SUBTITLE_SEARCH_WORKERS = 6
+_SUBTITLECAT_PAGE_WORKERS = 8
+_SUBTITLECAT_CANDIDATE_LIMIT = 24
+_AVSUBTITLES_MOVIE_LIMIT = 10
+
 # ---------- Subtitle Nexus ----------
 SUBTITLENEXUS_SEARCH_TW = "https://subtitlenexus.com/zh-tw/products/user-subtitles/"
 SUBTITLENEXUS_SEARCH_CN = "https://subtitlenexus.com/zh-cn/products/user-subtitles/"
@@ -66,6 +73,99 @@ AVSUBTITLES_ZH_SUB_RE = re.compile(
 AVSUBTITLES_MOVIE_TITLE_RE = re.compile(r"<title>\s*Subtitles for\s+(.+?)\s*</title>", re.I | re.S)
 ZHT_LANG_MARKERS = ("zht", "zh-tw", "zh_tw", "cht", "traditional", "繁")
 ZHS_LANG_MARKERS = ("zhs", "zh-cn", "zh_cn", "simplified", "简体", "簡")
+
+# 標準 SRT 時間軸（SubRip）
+_STD_SRT_TIME_RE = re.compile(
+    r"^\d{1,2}:\d{2}:\d{2},\d{3}\s+-->\s+\d{1,2}:\d{2}:\d{2},\d{3}\s*$"
+)
+# 疑似時間軸行（含非標準寫法，如 aisubs.app 的全形冒號與 ->）
+_LIKELY_TIME_LINE_RE = re.compile(
+    r"^\s*\d{1,2}[：:]\d{2}[：:]\d{2}[,.，]\d{3}\s*(?:-->|->|—>)\s*"
+    r"\d{1,2}[：:]\d{2}[：:]\d{2}[,.，]\d{3}\s*$"
+)
+# 零寬／不可見字元（常見於機翻字幕，會導致播放器無法解析時間軸）
+_INVISIBLE_CHARS_RE = re.compile(r"[\u200b-\u200d\ufeff\u00ad]")
+
+
+def _decode_subtitle_bytes(content: bytes) -> str | None:
+    for enc in ("utf-8-sig", "utf-8", "gb18030", "big5", "cp950", "latin-1"):
+        try:
+            return content.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return None
+
+
+def _extract_srt_from_archive(content: bytes, filename: str | None) -> tuple[bytes, str | None]:
+    if content[:2] != b"PK":
+        return content, filename
+    with zipfile.ZipFile(io.BytesIO(content)) as zf:
+        for name in zf.namelist():
+            if name.lower().endswith(".srt"):
+                return zf.read(name), os.path.basename(name)
+    raise ValueError("壓縮檔內找不到 .srt 字幕")
+
+
+def _looks_like_timestamp_line(line: str) -> bool:
+    s = line.strip()
+    if _STD_SRT_TIME_RE.match(s):
+        return True
+    return bool(_LIKELY_TIME_LINE_RE.match(s))
+
+
+def _normalize_timestamp_line(line: str) -> str:
+    s = _INVISIBLE_CHARS_RE.sub("", line.strip())
+    s = s.replace("：", ":").replace("，", ",")
+    s = re.sub(r"(\d{1,2}:\d{2}:\d{2})[,.](\d{3})", r"\1,\2", s)
+    s = re.sub(r"\s*(?:-->|->|—>)\s*", " --> ", s)
+    return s.strip()
+
+
+def normalize_srt_text(text: str) -> str:
+    cleaned = _INVISIBLE_CHARS_RE.sub("", text)
+    lines = []
+    for line in cleaned.splitlines():
+        if _looks_like_timestamp_line(line):
+            lines.append(_normalize_timestamp_line(line))
+        else:
+            lines.append(line.rstrip())
+    body = "\n".join(lines).strip()
+    return f"{body}\n" if body else ""
+
+
+def validate_srt_text(text: str) -> tuple[bool, str]:
+    if not text or not text.strip():
+        return False, "字幕檔為空白"
+    valid_lines = sum(1 for line in text.splitlines() if _STD_SRT_TIME_RE.match(line.strip()))
+    if valid_lines == 0:
+        return False, "字幕檔不含可辨識的 SRT 時間軸，播放器可能無法載入"
+    return True, ""
+
+
+def prepare_subtitle_bytes(content: bytes, filename: str | None) -> tuple[bytes | None, str | None, str | None]:
+    """
+    解壓、解碼並正規化 SRT，確保下載檔可被一般播放器識別。
+    回傳 (content, filename, error_message)；成功時 error_message 為 None。
+    """
+    try:
+        raw, fname = _extract_srt_from_archive(content, filename)
+    except ValueError as e:
+        return None, None, str(e)
+
+    text = _decode_subtitle_bytes(raw)
+    if text is None:
+        return None, None, "無法解讀字幕檔編碼"
+
+    normalized = normalize_srt_text(text)
+    ok, err = validate_srt_text(normalized)
+    if not ok:
+        return None, None, err
+
+    out_name = (fname or filename or "subtitle.srt").strip()
+    if not out_name.lower().endswith(".srt"):
+        base = out_name.rsplit(".", 1)[0] if "." in out_name else out_name
+        out_name = f"{base}.srt"
+    return normalized.encode("utf-8"), out_name, None
 
 
 def _query_from_filename(filename: str) -> str:
@@ -201,25 +301,23 @@ def download_opensubtitles(file_id: int | str | None, download_url: str | None) 
 
 
 # ---------- Subtitle Cat ----------
-def search_subtitlecat(query: str, lang: str = "zht") -> list[dict[str, Any]]:
-    """依關鍵字搜尋 Subtitle Cat，僅回傳含繁中/簡中 .srt 的結果。"""
+def _subtitlecat_list_candidates(query: str) -> list[dict[str, Any]]:
+    """從 Subtitle Cat 搜尋頁解析候選項目（不逐一驗證語言連結）。"""
     if not query or not query.strip():
         return []
-    lang = _normalize_subtitle_lang(lang)
     q = _query_from_filename(query.strip()) if query.strip() else query.strip()
     params = {"search": q.replace(" ", "+")}
-    result = []
+    result: list[dict[str, Any]] = []
     try:
         r = requests.get(SUBTITLECAT_SEARCH, headers=SUBTITLECAT_HEADERS, params=params, timeout=15)
         if r.status_code != 200:
             return []
         html = r.text
-        # 搜尋結果頁：連結格式 /subs/數字/標題.html 或 href="subs/422/Title.html"
         pattern = re.compile(
             r'href=["\']?(?:https?://www\.subtitlecat\.com/)?(subs/\d+/[^"\'>\s]+\.html)["\']?[^>]*>([^<]+)',
             re.I,
         )
-        seen = set()
+        seen: set[str] = set()
         for m in pattern.finditer(html):
             path = m.group(1).strip()
             title = re.sub(r"\s+", " ", m.group(2).strip())
@@ -229,7 +327,6 @@ def search_subtitlecat(query: str, lang: str = "zht") -> list[dict[str, Any]]:
             if full_url in seen:
                 continue
             seen.add(full_url)
-            # 過濾明顯非字幕標題的連結
             if len(title) < 2 or "subtitlecat" in title.lower():
                 continue
             result.append({
@@ -237,26 +334,60 @@ def search_subtitlecat(query: str, lang: str = "zht") -> list[dict[str, Any]]:
                 "id": f"subtitlecat-{path}",
                 "page_url": full_url,
                 "release": title,
-                "language": _lang_label(lang),
                 "file_name": (title[:80] + ".srt") if len(title) > 80 else f"{title}.srt",
             })
+            if len(result) >= _SUBTITLECAT_CANDIDATE_LIMIT:
+                break
     except Exception:
         pass
+    return result
 
-    filtered: list[dict[str, Any]] = []
-    for item in result:
-        try:
-            page_r = requests.get(item["page_url"], headers=SUBTITLECAT_HEADERS, timeout=12)
-            if page_r.status_code != 200:
+
+def _subtitlecat_verify_item_all_langs(item: dict[str, Any]) -> list[dict[str, Any]]:
+    """抓取單一字幕頁，一次判斷繁中／簡中是否可下載。"""
+    try:
+        page_r = requests.get(item["page_url"], headers=SUBTITLECAT_HEADERS, timeout=12)
+        if page_r.status_code != 200:
+            return []
+        html = page_r.text
+        verified: list[dict[str, Any]] = []
+        for search_lang in SUPPORTED_SUBTITLE_LANGS:
+            if not _subtitlecat_pick_lang_srt_url(html, search_lang):
                 continue
-            if not _subtitlecat_pick_lang_srt_url(page_r.text, lang):
-                continue
-            filtered.append(item)
-            if len(filtered) >= 30:
-                break
-        except Exception:
-            continue
-    return filtered
+            verified.append({
+                **item,
+                "lang_code": search_lang,
+                "language": _lang_label(search_lang),
+            })
+        return verified
+    except Exception:
+        return []
+
+
+def _search_subtitlecat_all_langs(query: str) -> list[dict[str, Any]]:
+    """搜尋 Subtitle Cat，單次搜尋頁 + 並行驗證各候選頁的繁中／簡中連結。"""
+    candidates = _subtitlecat_list_candidates(query)
+    if not candidates:
+        return []
+    results: list[dict[str, Any]] = []
+    per_lang_count = {"zht": 0, "zhs": 0}
+    with ThreadPoolExecutor(max_workers=_SUBTITLECAT_PAGE_WORKERS) as pool:
+        futures = [pool.submit(_subtitlecat_verify_item_all_langs, item) for item in candidates]
+        for fut in as_completed(futures):
+            for it in fut.result():
+                lang_code = it.get("lang_code", "zht")
+                if per_lang_count.get(lang_code, 0) >= 30:
+                    continue
+                per_lang_count[lang_code] = per_lang_count.get(lang_code, 0) + 1
+                it.setdefault("source", "subtitlecat")
+                results.append(it)
+    return results
+
+
+def search_subtitlecat(query: str, lang: str = "zht") -> list[dict[str, Any]]:
+    """依關鍵字搜尋 Subtitle Cat，僅回傳含繁中/簡中 .srt 的結果。"""
+    lang = _normalize_subtitle_lang(lang)
+    return [it for it in _search_subtitlecat_all_langs(query) if it.get("lang_code") == lang][:30]
 
 
 def download_subtitlecat(page_url: str, lang: str = "zht") -> tuple[bytes | None, str | None]:
@@ -348,49 +479,75 @@ def _avsubtitles_parse_movie_zh_subs(html: str, movie_path: str, lang: str) -> l
     return items
 
 
-def search_avsubtitles(query: str, lang: str = "zht") -> list[dict[str, Any]]:
-    """搜尋 AVSubtitles，僅回傳含中文（zh）字幕的項目。"""
-    q = (query or "").strip()
-    if not q:
-        return []
-    lang = _normalize_subtitle_lang(lang)
-    q = _query_from_filename(q)
-    result: list[dict[str, Any]] = []
+def _avsubtitles_discover_movies(query: str) -> list[str]:
+    movie_paths: list[str] = []
+    seen_movies: set[str] = set()
     try:
         r = requests.get(
             AVSUBTITLES_SEARCH,
             headers=AVSUBTITLES_HEADERS,
-            params={"search": q},
+            params={"search": query},
             timeout=15,
         )
         if r.status_code != 200:
             return []
-        movie_paths: list[str] = []
-        seen_movies: set[str] = set()
         for m in AVSUBTITLES_MOVIE_LINK_RE.finditer(r.text):
             path = m.group(1).strip()
             if "/subtitles/" in path or path in seen_movies:
                 continue
             seen_movies.add(path)
             movie_paths.append(path)
-            if len(movie_paths) >= 10:
+            if len(movie_paths) >= _AVSUBTITLES_MOVIE_LIMIT:
                 break
+    except Exception:
+        return []
+    return movie_paths
 
-        for movie_path in movie_paths:
-            movie_url = f"{AVSUBTITLES_BASE}{movie_path}"
-            try:
-                movie_r = requests.get(movie_url, headers=AVSUBTITLES_HEADERS, timeout=12)
-                if movie_r.status_code != 200:
-                    continue
-                items = _avsubtitles_parse_movie_zh_subs(movie_r.text, movie_path, lang)
-                result.extend(items)
-                if len(result) >= 30:
-                    break
-            except Exception:
-                continue
-    except Exception as e:
-        logger.warning("avsubtitles search error: %s", e, exc_info=True)
-    return result[:30]
+
+def _avsubtitles_fetch_movie_all_langs(movie_path: str) -> list[dict[str, Any]]:
+    movie_url = f"{AVSUBTITLES_BASE}{movie_path}"
+    try:
+        movie_r = requests.get(movie_url, headers=AVSUBTITLES_HEADERS, timeout=12)
+        if movie_r.status_code != 200:
+            return []
+        base_items = _avsubtitles_parse_movie_zh_subs(movie_r.text, movie_path, "zht")
+        results: list[dict[str, Any]] = []
+        for search_lang in SUPPORTED_SUBTITLE_LANGS:
+            for it in base_items:
+                results.append({
+                    **it,
+                    "id": f"{it['id']}-{search_lang}",
+                    "lang_code": search_lang,
+                    "language": _lang_label(search_lang),
+                })
+        return results
+    except Exception:
+        return []
+
+
+def _search_avsubtitles_all_langs(query: str) -> list[dict[str, Any]]:
+    """搜尋 AVSubtitles：單次搜尋頁 + 並行抓取各電影頁，繁簡中各產生一筆結果。"""
+    q = (query or "").strip()
+    if not q:
+        return []
+    q = _query_from_filename(q)
+    movie_paths = _avsubtitles_discover_movies(q)
+    if not movie_paths:
+        return []
+    results: list[dict[str, Any]] = []
+    with ThreadPoolExecutor(max_workers=_SUBTITLECAT_PAGE_WORKERS) as pool:
+        futures = [pool.submit(_avsubtitles_fetch_movie_all_langs, path) for path in movie_paths]
+        for fut in as_completed(futures):
+            results.extend(fut.result())
+            if len(results) >= 60:
+                break
+    return results[:60]
+
+
+def search_avsubtitles(query: str, lang: str = "zht") -> list[dict[str, Any]]:
+    """搜尋 AVSubtitles，僅回傳含中文（zh）字幕的項目。"""
+    lang = _normalize_subtitle_lang(lang)
+    return [it for it in _search_avsubtitles_all_langs(query) if it.get("lang_code") == lang][:30]
 
 
 def download_avsubtitles(page_url: str, _lang: str = "zht") -> tuple[bytes | None, str | None]:
@@ -461,40 +618,77 @@ def _normalize_subtitle_lang(lang: str) -> str:
     return "zht"
 
 
+# 搜尋結果排序：繁中 > 簡中；來源 Subtitle Cat > AVSubtitles > Subtitle Nexus（其餘來源排最後）
+_SUBTITLE_SOURCE_RANK = {
+    "subtitlecat": 0,
+    "avsubtitles": 1,
+    "subtitlenexus": 2,
+    "opensubtitles": 3,
+}
+
+
+def _subtitle_result_sort_key(item: dict[str, Any]) -> tuple[int, int]:
+    lang_code = item.get("lang_code") or _normalize_subtitle_lang(
+        "zhs" if item.get("language") == "簡中" else "zht"
+    )
+    lang_rank = 1 if lang_code == "zhs" else 0
+    source_rank = _SUBTITLE_SOURCE_RANK.get(item.get("source", ""), 99)
+    return (lang_rank, source_rank)
+
+
+def _sort_subtitle_results(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return sorted(items, key=_subtitle_result_sort_key)
+
+
+def _append_subtitle_results(
+    combined: list[dict[str, Any]],
+    items: list[dict[str, Any]],
+    source: str,
+    search_lang: str,
+) -> None:
+    for it in items:
+        it.setdefault("source", source)
+        it["lang_code"] = search_lang
+        it["language"] = _lang_label(search_lang)
+        combined.append(it)
+
+
 def search_subtitles(query: str, lang: str = "zht") -> list[dict[str, Any]]:
     """
     依關鍵字搜尋字幕，合併 OpenSubtitles、Subtitle Cat、Subtitle Nexus 與 AVSubtitles 結果。
-    僅支援繁中(zht)、簡中(zhs)。每項含 source；含 page_url 的來源可直接或導向下載。
+    同時搜尋繁中與簡中，並行請求各來源以加速；結果排序：繁中優先 > 簡中 > Subtitle Cat > AVSubtitles > Subtitle Nexus。
     """
     combined: list[dict[str, Any]] = []
-    lang = _normalize_subtitle_lang(lang)
     q = (query or "").strip()
     if not q and len((query or "")) > 2:
         q = _query_from_filename(query)
     if not q:
         return []
 
-    opensub = search_opensubtitles(q, lang)
-    for it in opensub:
-        it.setdefault("source", "opensubtitles")
-        combined.append(it)
+    with ThreadPoolExecutor(max_workers=_SUBTITLE_SEARCH_WORKERS) as pool:
+        future_map = {
+            pool.submit(search_opensubtitles, q, "zht"): ("opensubtitles", "zht"),
+            pool.submit(search_opensubtitles, q, "zhs"): ("opensubtitles", "zhs"),
+            pool.submit(_search_subtitlecat_all_langs, q): ("subtitlecat", None),
+            pool.submit(_search_avsubtitles_all_langs, q): ("avsubtitles", None),
+            pool.submit(search_subtitlenexus, q, "zht"): ("subtitlenexus", "zht"),
+            pool.submit(search_subtitlenexus, q, "zhs"): ("subtitlenexus", "zhs"),
+        }
+        for fut in as_completed(future_map):
+            source, search_lang = future_map[fut]
+            try:
+                items = fut.result()
+            except Exception as e:
+                logger.warning("%s search error: %s", source, e, exc_info=True)
+                continue
+            if search_lang is None:
+                for it in items:
+                    it.setdefault("source", source)
+                    combined.append(it)
+            else:
+                _append_subtitle_results(combined, items, source, search_lang)
 
-    subtitlecat = search_subtitlecat(q, lang)
-    for it in subtitlecat:
-        it.setdefault("source", "subtitlecat")
-        combined.append(it)
-
-    subtitlenexus = search_subtitlenexus(q, lang)
-    for it in subtitlenexus:
-        it.setdefault("source", "subtitlenexus")
-        combined.append(it)
-
-    avsubtitles = search_avsubtitles(q, lang)
-    for it in avsubtitles:
-        it.setdefault("source", "avsubtitles")
-        combined.append(it)
-
-    return combined
+    return _sort_subtitle_results(combined)
 
 
 def download_subtitle_file(
@@ -503,15 +697,23 @@ def download_subtitle_file(
     source: str = "opensubtitles",
     page_url: str | None = None,
     lang: str = "zht",
-) -> tuple[bytes | None, str | None]:
+) -> tuple[bytes | None, str | None, str | None]:
     """
-    下載單一字幕檔。回傳 (content, suggested_filename) 或 (None, None)。
+    下載單一字幕檔並正規化為標準 SRT。回傳 (content, suggested_filename, error_message)。
     - source=opensubtitles：使用 file_id 或 download_url（與原行為相同）。
     - source=subtitlecat：使用 page_url + lang 至 Subtitle Cat 抓頁再下載對應語言 .srt。
     - source=avsubtitles：使用 page_url 至 AVSubtitles 抓頁再下載中文 .srt。
     """
     if source == "subtitlecat" and page_url:
-        return download_subtitlecat(page_url, _normalize_subtitle_lang(lang))
-    if source == "avsubtitles" and page_url:
-        return download_avsubtitles(page_url, _normalize_subtitle_lang(lang))
-    return download_opensubtitles(file_id, download_url)
+        content, filename = download_subtitlecat(page_url, _normalize_subtitle_lang(lang))
+    elif source == "avsubtitles" and page_url:
+        content, filename = download_avsubtitles(page_url, _normalize_subtitle_lang(lang))
+    else:
+        content, filename = download_opensubtitles(file_id, download_url)
+
+    if content is None:
+        return None, None, None
+    prepared, out_name, err = prepare_subtitle_bytes(content, filename)
+    if err:
+        logger.warning("subtitle prepare failed (%s): %s", source, err)
+    return prepared, out_name, err

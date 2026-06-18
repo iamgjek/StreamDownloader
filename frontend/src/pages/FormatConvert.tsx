@@ -1,4 +1,6 @@
 import styles from './FormatConvert.module.css'
+import { usePageMeta } from '../hooks/usePageMeta'
+import { PAGE_META } from '../seo/pageMeta'
 
 const samples = [
   {
@@ -34,6 +36,7 @@ const samples = [
 ]
 
 export default function FormatConvert() {
+  usePageMeta(PAGE_META.convert)
   return (
     <div className={styles.page}>
       <h1 className={styles.title}>格式轉換（本地端 ffmpeg）</h1>

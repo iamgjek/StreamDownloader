@@ -39,6 +39,7 @@ export const api = {
   subsSearch: (q: string, lang?: string) =>
     request<{ data: Array<{
       source?: string
+      lang_code?: string
       id: string
       file_id?: number
       release?: string

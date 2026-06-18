@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react'
 import { api } from '../api/client'
 import styles from './Dashboard.module.css'
 import { trackCtaEvent } from '../analytics/ga'
+import { usePageMeta } from '../hooks/usePageMeta'
+import { PAGE_META } from '../seo/pageMeta'
 
 type UserRow = { id: number; email: string; username: string; is_admin: boolean; created_at: string }
 type DownloadRow = {
@@ -16,6 +18,7 @@ function toDateKey(iso: string) {
 }
 
 export default function Dashboard() {
+  usePageMeta(PAGE_META.dashboard)
   const [users, setUsers] = useState<UserRow[]>([])
   const [downloads, setDownloads] = useState<DownloadRow[]>([])
   const [loading, setLoading] = useState(true)
