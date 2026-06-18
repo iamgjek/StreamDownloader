@@ -250,3 +250,76 @@ sudo bash deploy/ec2/redeploy-backend.sh
 
 如果你只改前端（而前端是用 Vercel 部署），EC2 通常不需要重部署後端。
 
+---
+
+## 10) Push 後自動部署（GitHub Actions）
+
+專案已提供 `.github/workflows/deploy-backend.yml`：
+
+- 當 `main` 分支有 push，且變更包含 `backend/**` 或 `deploy/ec2/**` 時，自動 SSH 到 EC2 部署後端
+- 也可在 GitHub → Actions → **Deploy Backend to EC2** → **Run workflow** 手動觸發
+
+### 10.1 前端（Vercel）
+
+前端位於 `frontend/`，建議在 [Vercel Dashboard](https://vercel.com) 將此 GitHub repo 連結起來：
+
+- **Root Directory** 設為 `frontend`
+- 之後每次 push 到 `main`（或你設定的 production branch），Vercel 會自動 build 並部署
+- 目前 `frontend/vercel.json` 會把 `/api/*` 轉發到 EC2
+
+### 10.2 後端（EC2）— 一次性設定
+
+#### A. EC2 要能拉 GitHub 程式碼
+
+在 EC2 上（以 `ubuntu` 使用者）建立 deploy key，並加到 repo 的 **Deploy keys**（Read-only 即可）：
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/github_deploy -N ""
+cat ~/.ssh/github_deploy.pub
+# 到 GitHub repo → Settings → Deploy keys → Add deploy key
+```
+
+設定 git remote 使用 SSH（若尚未設定）：
+
+```bash
+cd /opt/stream-downloader
+git remote set-url origin git@github.com:iamgjek/StreamDownloader.git
+
+cat >> ~/.ssh/config <<'EOF'
+Host github.com
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/github_deploy
+  IdentitiesOnly yes
+EOF
+chmod 600 ~/.ssh/config
+ssh -T git@github.com
+```
+
+#### B. GitHub Repository Secrets
+
+到 GitHub repo → **Settings** → **Secrets and variables** → **Actions**，新增：
+
+| Secret | 說明 | 範例 |
+|--------|------|------|
+| `EC2_HOST` | EC2 公網 IP 或網域 | `13.212.87.50` |
+| `EC2_USER` | SSH 使用者 | `ubuntu` |
+| `EC2_SSH_KEY` | 可 SSH 登入 EC2 的私鑰（完整 PEM 內容） | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
+| `EC2_APP_DIR` | （選填）專案在 EC2 上的路徑 | `/opt/stream-downloader` |
+
+`EC2_SSH_KEY` 通常是你建立 EC2 時下載的 `.pem` 檔內容；請勿提交到 repo。
+
+#### C. EC2 安全群組
+
+確保 EC2 的 Security Group 允許 GitHub Actions runner 透過 **SSH (22)** 連入（建議限制為你的 IP；若要用 Actions，可暫時允許 `0.0.0.0/0` 或改用 [GitHub IP ranges](https://api.github.com/meta) 做更嚴格限制）。
+
+### 10.3 驗證
+
+1. 修改 `backend/` 任一檔案後 push 到 `main`
+2. 到 GitHub → **Actions** 查看 workflow 是否成功
+3. 確認 API 正常：
+
+```bash
+curl "http://<EC2_PUBLIC_IP>/api/subs/search?q=test&lang=zht"
+```
+
