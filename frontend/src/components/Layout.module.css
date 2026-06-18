@@ -155,6 +155,10 @@
   outline-offset: 2px;
 }
 
+.btnPrimaryShort {
+  display: none;
+}
+
 .main {
   flex: 1;
   padding: 2rem 1.5rem;
@@ -185,4 +189,93 @@
 
 .footer p {
   margin: 0;
+}
+
+@media (max-width: 640px) {
+  .header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      'logo promo user'
+      'nav nav nav';
+    padding: 0.55rem 0.85rem;
+    gap: 0.35rem 0.45rem;
+    align-items: center;
+  }
+
+  .logo {
+    grid-area: logo;
+    font-size: 1rem;
+    padding: 0.15rem 0;
+  }
+
+  .nav {
+    grid-area: nav;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+  }
+
+  .nav a {
+    min-height: 34px;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .githubPromo {
+    grid-area: promo;
+    margin-left: 0;
+    gap: 0;
+  }
+
+  .githubPromoText {
+    display: none;
+  }
+
+  .githubLink {
+    padding: 0.3rem;
+  }
+
+  .githubIcon {
+    width: 1.2rem;
+    height: 1.2rem;
+  }
+
+  .user {
+    grid-area: user;
+    gap: 0.4rem;
+  }
+
+  .username {
+    display: none;
+  }
+
+  .btnGhost {
+    min-height: 34px;
+    padding: 0.3rem 0.55rem;
+    font-size: 0.82rem;
+  }
+
+  .btnPrimary {
+    min-height: 32px;
+    padding: 0.28rem 0.55rem;
+    font-size: 0.78rem;
+    border-radius: 6px;
+  }
+
+  .btnPrimaryFull {
+    display: none;
+  }
+
+  .btnPrimaryShort {
+    display: inline;
+  }
+
+  .main {
+    padding: 1.25rem 0.85rem;
+  }
+
+  .footer {
+    padding: 1rem 0.85rem;
+    font-size: 0.8rem;
+  }
 }

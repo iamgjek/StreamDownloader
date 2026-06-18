@@ -74,7 +74,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               className={styles.btnPrimary}
               onClick={() => trackCtaEvent({ action: 'layout_login', label: '登入 / 加入會員', location: 'header' })}
             >
-              登入 / 加入會員
+              <span className={styles.btnPrimaryFull}>登入 / 加入會員</span>
+              <span className={styles.btnPrimaryShort}>登入</span>
             </Link>
           )}
         </div>
