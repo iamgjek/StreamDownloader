@@ -38,5 +38,14 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             sudo APP_USER="${{ secrets.EC2_USER }}" APP_DIR="$APP_DIR" bash deploy/ec2/redeploy-backend.sh
-            curl -fsS http://127.0.0.1:8000/docs >/dev/null
-            echo "Backend deploy succeeded."
+            echo "==> 等待 API 就緒"
+            for i in $(seq 1 30); do
+              if curl -fsS http://127.0.0.1:8000/docs >/dev/null; then
+                echo "Backend deploy succeeded."
+                exit 0
+              fi
+              sleep 2
+            done
+            echo "Health check failed: API did not become ready within 60s"
+            sudo journalctl -u stream-downloader-api -n 20 --no-pager || true
+            exit 1
