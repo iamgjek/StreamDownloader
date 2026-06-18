@@ -385,26 +385,8 @@ def download_start(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if not body.url or not body.url.strip():
-        raise HTTPException(status_code=400, detail="請提供影片網址")
-    dtype = (body.download_type or "video").strip().lower()
-    if dtype not in ("video", "subs", "both"):
-        raise HTTPException(status_code=400, detail="download_type 須為 video、subs 或 both")
-
-    log = DownloadLog(
-        user_id=current_user.id,
-        url=body.url.strip(),
-        download_type=dtype,
-        status="pending",
-        progress=0,
-        message="排隊中…",
-    )
-    db.add(log)
-    db.commit()
-    db.refresh(log)
-    job_id = log.id
-    background_tasks.add_task(_run_download_job, job_id, body.url.strip(), dtype, current_user.id)
-    return DownloadJobResponse(job_id=job_id)
+    """影片下載已關閉，請改用字幕下載。"""
+    raise HTTPException(status_code=410, detail="影片下載功能已關閉，請使用字幕下載")
 
 
 @api.get("/download/status/{job_id}", response_model=DownloadStatusResponse)

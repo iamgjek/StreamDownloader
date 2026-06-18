@@ -1,12 +1,17 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { api, getToken } from '../api/client'
 import styles from './Subtitles.module.css'
 import { trackCtaEvent } from '../analytics/ga'
 import { usePageMeta } from '../hooks/usePageMeta'
+import { useJsonLd } from '../hooks/useJsonLd'
 import { PAGE_META } from '../seo/pageMeta'
+import { buildSubtitlesHomeJsonLd } from '../seo/subtitlesJsonLd'
 
 const RESULTS_PAGE_SIZE = 5
 const SUBTITLE_KEYWORD_STORAGE_KEY = 'stream_dl_subtitle_downloaded_keywords_v1'
+const TOAST_DURATION_MS = 4500
+
+type LangFilter = 'all' | 'zht' | 'zhs'
 
 type SubItem = {
   id: string
@@ -27,6 +32,41 @@ function getSourceLabel(source?: string): string | null {
   return null
 }
 
+function isRecommendedItem(item: SubItem): boolean {
+  return item.lang_code === 'zht' && item.source === 'subtitlecat'
+}
+
+function matchesLangFilter(item: SubItem, filter: LangFilter): boolean {
+  if (filter === 'all') return true
+  const code = item.lang_code || (item.language === '簡中' ? 'zhs' : 'zht')
+  return code === filter
+}
+
+function FeatureIcon({ type }: { type: 'sources' | 'format' | 'sort' }) {
+  if (type === 'sources') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" />
+      </svg>
+    )
+  }
+  if (type === 'format') {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6M9 13h6M9 17h6" />
+      </svg>
+    )
+  }
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="m3 8 4-4 4 4M7 4v16" />
+      <path d="m14 12 4-4 4 4M18 8v12" />
+    </svg>
+  )
+}
+
 type DownloadedSubtitleKeyword = { keyword: string; downloaded_at: number }
 
 function AlertIcon() {
@@ -41,13 +81,19 @@ function AlertIcon() {
 
 export default function Subtitles() {
   usePageMeta(PAGE_META.subtitles)
+  const jsonLd = useMemo(
+    () => buildSubtitlesHomeJsonLd(typeof window !== 'undefined' ? window.location.origin : ''),
+    [],
+  )
+  useJsonLd(jsonLd)
+
   const [query, setQuery] = useState('')
-  /** 對應「目前 results 是用哪個關鍵字搜尋出來的」，避免下載時 query 被使用者改掉而寫錯 */
   const [activeSearchKeyword, setActiveSearchKeyword] = useState('')
   const [results, setResults] = useState<SubItem[]>([])
+  const [langFilter, setLangFilter] = useState<LangFilter>('all')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  /** 記錄每筆搜尋結果下載失敗的提示訊息（以 tooltip 形式顯示，避免版面變動） */
+  const [toast, setToast] = useState<string | null>(null)
   const [downloadHints, setDownloadHints] = useState<Record<string, string>>({})
   const [downloadedSubtitleKeywords, setDownloadedSubtitleKeywords] = useState<DownloadedSubtitleKeyword[]>(() => {
     try {
@@ -66,6 +112,64 @@ export default function Subtitles() {
   })
   const [resultsPage, setResultsPage] = useState(1)
   const hasSetDefaultQuery = useRef(false)
+  const hasRunUrlQuery = useRef(false)
+
+  const filteredResults = useMemo(
+    () => results.filter((item) => matchesLangFilter(item, langFilter)),
+    [results, langFilter],
+  )
+
+  useEffect(() => {
+    if (!toast) return
+    const timer = window.setTimeout(() => setToast(null), TOAST_DURATION_MS)
+    return () => window.clearTimeout(timer)
+  }, [toast])
+
+  useEffect(() => {
+    setResultsPage(1)
+  }, [langFilter, results.length])
+
+  const syncQueryToUrl = useCallback((q: string) => {
+    const url = new URL(window.location.href)
+    if (q) {
+      url.searchParams.set('q', q)
+    } else {
+      url.searchParams.delete('q')
+    }
+    window.history.replaceState(null, '', url)
+  }, [])
+
+  const runSearch = useCallback(async (rawQuery: string) => {
+    setError('')
+    const q = rawQuery.trim()
+    if (!q) {
+      setError('請輸入影片檔名或片名')
+      return
+    }
+    setActiveSearchKeyword(q)
+    setLoading(true)
+    setResultsPage(1)
+    syncQueryToUrl(q)
+    try {
+      const res = await api.subsSearch(q)
+      setResults(res.data || [])
+      if (!res.data?.length) setError('未找到符合的字幕')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '搜尋失敗')
+      setResults([])
+    } finally {
+      setLoading(false)
+    }
+  }, [syncQueryToUrl])
+
+  useEffect(() => {
+    if (hasRunUrlQuery.current) return
+    const q = new URLSearchParams(window.location.search).get('q')?.trim()
+    if (!q) return
+    hasRunUrlQuery.current = true
+    setQuery(q)
+    runSearch(q)
+  }, [runSearch])
 
   useEffect(() => {
     try {
@@ -75,8 +179,8 @@ export default function Subtitles() {
     }
   }, [downloadedSubtitleKeywords])
 
-  // 預設帶入搜尋關鍵字為最新一筆下載的字幕關鍵字
   useEffect(() => {
+    if (hasRunUrlQuery.current) return
     if (hasSetDefaultQuery.current || downloadedSubtitleKeywords.length === 0) return
     const latestKeyword = downloadedSubtitleKeywords[0].keyword
     if (latestKeyword && latestKeyword.trim()) {
@@ -115,26 +219,9 @@ export default function Subtitles() {
     return msg.includes('此頁沒有該語言的直接下載連結') && msg.includes('Subtitle Cat')
   }
 
-  const search = async () => {
-    setError('')
-    const q = query.trim()
-    if (!q) {
-      setError('請輸入影片檔名或片名')
-      return
-    }
-    setActiveSearchKeyword(q)
-    setLoading(true)
-    setResultsPage(1)
-    try {
-      const res = await api.subsSearch(q)
-      setResults(res.data || [])
-      if (!res.data?.length) setError('未找到符合的字幕')
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '搜尋失敗')
-      setResults([])
-    } finally {
-      setLoading(false)
-    }
+  const search = () => {
+    trackCtaEvent({ action: 'subtitles_search', label: `搜尋：${query || ''}`, location: 'search' })
+    runSearch(query)
   }
 
   const download = (item: SubItem, keywordFromSearch: string) => {
@@ -171,6 +258,7 @@ export default function Subtitles() {
         a.click()
         URL.revokeObjectURL(a.href)
         if (keyword) upsertDownloadedKeyword(keyword)
+        setToast(`已下載 ${name}，檔案已自動修正為標準 SRT 格式`)
       })
       .catch((e) => {
         const msg = e instanceof Error ? e.message : '下載失敗'
@@ -188,38 +276,64 @@ export default function Subtitles() {
     window.open(item.page_url, '_blank', 'noopener,noreferrer')
   }
 
-  const resultsTotalPages = Math.max(1, Math.ceil(results.length / RESULTS_PAGE_SIZE))
-  const resultsSlice = results.slice(
+  const langCounts = useMemo(() => ({
+    all: results.length,
+    zht: results.filter((item) => matchesLangFilter(item, 'zht')).length,
+    zhs: results.filter((item) => matchesLangFilter(item, 'zhs')).length,
+  }), [results])
+
+  const resultsTotalPages = Math.max(1, Math.ceil(filteredResults.length / RESULTS_PAGE_SIZE))
+  const resultsSlice = filteredResults.slice(
     (resultsPage - 1) * RESULTS_PAGE_SIZE,
     resultsPage * RESULTS_PAGE_SIZE
   )
 
+  const langFilterOptions: { id: LangFilter; label: string }[] = [
+    { id: 'all', label: `全部（${langCounts.all}）` },
+    { id: 'zht', label: `繁中（${langCounts.zht}）` },
+    { id: 'zhs', label: `簡中（${langCounts.zhs}）` },
+  ]
+
   return (
     <div className={styles.page}>
-      <h1 className={styles.title}>字幕下載</h1>
-      <p className={styles.hint}>
-        輸入影片檔名或片名（可貼上完整檔名，系統會自動擷取關鍵字），搜尋後會列出符合的字幕，點擊即可下載到本機。
-      </p>
+      <section className={styles.hero} aria-labelledby="subs-hero-heading">
+        <h1 id="subs-hero-heading" className={styles.heroTitle}>繁中／簡中字幕，一站搜尋下載</h1>
+        <p className={styles.heroSubtitle}>
+          輸入番號或影片檔名即可搜尋，可貼上完整檔名，系統會自動擷取關鍵字。下載後自動驗證並修正 SRT 格式，確保播放器可正常載入。
+        </p>
+        <ul className={styles.featureList}>
+          <li className={styles.featureItem}>
+            <span className={styles.featureIcon}><FeatureIcon type="sources" /></span>
+            <span className={styles.featureText}>整合 Subtitle Cat、AVSubtitles 等多個字幕來源</span>
+          </li>
+          <li className={styles.featureItem}>
+            <span className={styles.featureIcon}><FeatureIcon type="format" /></span>
+            <span className={styles.featureText}>下載後自動修正非標準 SRT，播放器可直接使用</span>
+          </li>
+          <li className={styles.featureItem}>
+            <span className={styles.featureIcon}><FeatureIcon type="sort" /></span>
+            <span className={styles.featureText}>繁中優先排序，推薦來源一目了然</span>
+          </li>
+        </ul>
+      </section>
 
       <div className={styles.card}>
         <label className={styles.label} htmlFor="subs-query">搜尋關鍵字（影片檔名 / 片名）</label>
         <div className={styles.searchRow}>
           <input
             id="subs-query"
-            type="text"
+            type="search"
             className={styles.input}
-            placeholder="例如：Movie.2024.1080p.mkv 或 電影名稱"
+            placeholder="例如：ABF-045 或 Movie.2024.1080p.mkv"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && search()}
+            autoComplete="off"
           />
           <button
             type="button"
             className={styles.btn}
-            onClick={() => {
-              trackCtaEvent({ action: 'subtitles_search', label: `搜尋：${query || ''}`, location: 'search' })
-              search()
-            }}
+            onClick={search}
             disabled={loading}
           >
             {loading ? '搜尋中…' : '搜尋'}
@@ -229,19 +343,42 @@ export default function Subtitles() {
         {error && <p className={styles.error} role="alert">{error}</p>}
 
         {results.length > 0 && (
+          <div className={styles.langFilterRow} role="group" aria-label="語言篩選">
+            {langFilterOptions.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                className={langFilter === opt.id ? styles.langFilterActive : styles.langFilterBtn}
+                onClick={() => setLangFilter(opt.id)}
+                disabled={opt.id !== 'all' && langCounts[opt.id] === 0}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {results.length > 0 && (
           <div className={styles.results}>
-            <h3>符合的字幕（共 {results.length} 筆）</h3>
+            <h3>
+              符合的字幕（顯示 {filteredResults.length} / {results.length} 筆）
+            </h3>
+            {filteredResults.length === 0 ? (
+              <p className={styles.filterEmpty}>此語言篩選下沒有結果，請切換其他語言。</p>
+            ) : (
             <ul className={styles.list}>
-              {resultsSlice.map((item) => (
-                <li key={`${item.id}-${item.lang_code || item.language || ''}`} className={styles.resultItem}>
+              {resultsSlice.map((item) => {
+                const rowId = `${item.id}-${item.lang_code || item.language || ''}`
+                return (
+                <li key={rowId} className={styles.resultItem}>
                   <div className={styles.resultMain}>
                     <span className={styles.itemName}>{item.release || item.file_name || item.id}</span>
-                    {downloadHints[item.id] && (
+                    {downloadHints[rowId] && (
                       <span
                         className={styles.alertIcon}
                         role="img"
                         aria-label="下載提示"
-                        title={downloadHints[item.id]}
+                        title={downloadHints[rowId]}
                         tabIndex={0}
                       >
                         <AlertIcon />
@@ -249,6 +386,11 @@ export default function Subtitles() {
                     )}
                   </div>
                   <div className={styles.resultMeta}>
+                    {isRecommendedItem(item) && (
+                      <span className={styles.recommendedBadge} title="繁中 Subtitle Cat 來源，建議優先嘗試">
+                        推薦
+                      </span>
+                    )}
                     {item.language && <span className={styles.lang}>{item.language}</span>}
                     {getSourceLabel(item.source) && (
                       <span className={styles.sourceBadge} title={getSourceLabel(item.source) || ''}>
@@ -295,9 +437,10 @@ export default function Subtitles() {
                     )}
                   </div>
                 </li>
-              ))}
+              )})}
             </ul>
-            {results.length > RESULTS_PAGE_SIZE && (
+            )}
+            {filteredResults.length > RESULTS_PAGE_SIZE && (
               <div className={styles.pagination}>
                 <button
                   type="button"
@@ -308,7 +451,7 @@ export default function Subtitles() {
                   上一頁
                 </button>
                 <span className={styles.pageInfo}>
-                  {resultsPage} / {resultsTotalPages}（共 {results.length} 筆）
+                  {resultsPage} / {resultsTotalPages}（共 {filteredResults.length} 筆）
                 </span>
                 <button
                   type="button"
@@ -323,6 +466,12 @@ export default function Subtitles() {
           </div>
         )}
       </div>
+
+      {toast && (
+        <div className={styles.toast} role="status" aria-live="polite">
+          {toast}
+        </div>
+      )}
 
       <section className={styles.historySection}>
         <h2 className={styles.historyTitle}>下載過的字幕</h2>

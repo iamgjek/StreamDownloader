@@ -25,13 +25,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             to="/"
             className={({ isActive }) => (isActive ? styles.navActive : '')}
             end
-            onClick={() => trackCtaEvent({ action: 'layout_nav_download', label: '影片下載', location: 'nav' })}
-          >
-            影片下載
-          </NavLink>
-          <NavLink
-            to="/subtitles"
-            className={({ isActive }) => (isActive ? styles.navActive : '')}
             onClick={() => trackCtaEvent({ action: 'layout_nav_subtitles', label: '字幕下載', location: 'nav' })}
           >
             字幕下載

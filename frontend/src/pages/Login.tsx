@@ -50,10 +50,10 @@ export default function Login() {
       <section className={styles.hero} aria-labelledby="login-heading">
         <h1 id="login-heading" className={styles.title}>Stream Downloader</h1>
         <p className={styles.tagline}>
-          影片在這下、字幕在這找，無碼、中字一站搞定！
+          字幕在這找，繁中、簡中一站搞定！
         </p>
         <p className={styles.subtitle}>
-          支援 MissAV、YouTube 跟一堆有的沒的～登入就能用，不用再兩邊跑！
+          輸入影片檔名或片名即可搜尋字幕，登入後可記錄下載紀錄。
         </p>
       </section>
 

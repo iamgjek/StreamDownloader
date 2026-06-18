@@ -1,7 +1,7 @@
 export const SITE_NAME = 'Stream Downloader'
 
 export const DEFAULT_DESCRIPTION =
-  'Stream Downloader：支援 MissAV、YouTube 等平台的影片下載，整合繁中／簡中字幕搜尋與 ffmpeg 格式轉換指令，一站完成影音處理。'
+  'Stream Downloader：依影片檔名或片名搜尋繁中、簡中字幕，整合多個字幕來源，下載後自動驗證 SRT 格式，並提供 ffmpeg 格式轉換指令參考。'
 
 export type PageMetaConfig = {
   title: string
@@ -11,17 +11,11 @@ export type PageMetaConfig = {
 }
 
 export const PAGE_META: Record<string, PageMetaConfig> = {
-  download: {
-    title: '影片下載',
-    description:
-      '貼上 MissAV、YouTube 等影片網址即可下載，支援進度追蹤與下載紀錄。登入後即可使用 Stream Downloader 線上影片下載服務。',
-    path: '/',
-  },
   subtitles: {
     title: '字幕下載',
     description:
       '依影片檔名或片名搜尋繁中、簡中字幕，整合 Subtitle Cat、AVSubtitles 等來源，下載後自動驗證 SRT 格式，確保播放器可正常載入。',
-    path: '/subtitles',
+    path: '/',
   },
   convert: {
     title: '格式轉換',
@@ -31,7 +25,7 @@ export const PAGE_META: Record<string, PageMetaConfig> = {
   },
   login: {
     title: '登入 / 註冊',
-    description: '登入或註冊 Stream Downloader 帳號，使用影片下載、字幕搜尋與個人下載紀錄等功能。',
+    description: '登入或註冊 Stream Downloader 帳號，使用字幕搜尋與下載紀錄等功能。',
     path: '/login',
   },
   dashboard: {

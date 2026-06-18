@@ -24,7 +24,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [activeSection, setActiveSection] = useState<'overview' | 'members' | 'downloads'>('overview')
-  const [downloadTypeTab, setDownloadTypeTab] = useState<'all' | 'video' | 'subs'>('all')
+  const [downloadTypeTab, setDownloadTypeTab] = useState<'all' | 'video' | 'subs'>('subs')
 
   const load = () => {
     Promise.all([api.adminUsers(), api.adminDownloads()])
