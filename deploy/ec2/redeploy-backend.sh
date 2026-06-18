@@ -14,8 +14,20 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 ROOT_DIR="${APP_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
-APP_USER="${APP_USER:-ubuntu}"
-APP_GROUP="${APP_GROUP:-ubuntu}"
+
+if [[ -z "${APP_USER:-}" ]]; then
+  APP_USER="$(stat -c '%U' "$ROOT_DIR" 2>/dev/null || true)"
+  if [[ -z "$APP_USER" || "$APP_USER" == "root" ]]; then
+    if id ec2-user &>/dev/null; then
+      APP_USER="ec2-user"
+    elif id ubuntu &>/dev/null; then
+      APP_USER="ubuntu"
+    else
+      APP_USER="${SUDO_USER:-root}"
+    fi
+  fi
+fi
+APP_GROUP="${APP_GROUP:-$APP_USER}"
 BACKEND_DIR="$ROOT_DIR/backend"
 VENV_DIR="$BACKEND_DIR/venv"
 

@@ -303,7 +303,7 @@ ssh -T git@github.com
 | Secret | 說明 | 範例 |
 |--------|------|------|
 | `EC2_HOST` | EC2 公網 IP 或網域 | `13.212.87.50` |
-| `EC2_USER` | SSH 使用者 | `ubuntu` |
+| `EC2_USER` | SSH 使用者（Amazon Linux 用 `ec2-user`，Ubuntu 用 `ubuntu`） | `ec2-user` |
 | `EC2_SSH_KEY` | 可 SSH 登入 EC2 的私鑰（完整 PEM 內容） | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
 | `EC2_APP_DIR` | （選填）專案在 EC2 上的路徑 | `/opt/stream-downloader` |
 
