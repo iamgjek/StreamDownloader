@@ -228,61 +228,67 @@ export default function Subtitles() {
             <h3>符合的字幕（共 {results.length} 筆）</h3>
             <ul className={styles.list}>
               {resultsSlice.map((item) => (
-                <li key={item.id}>
-                  <span className={styles.itemName}>{item.release || item.file_name || item.id}</span>
-                  {downloadHints[item.id] && (
-                    <span
-                      className={styles.alertIcon}
-                      role="img"
-                      aria-label="下載提示"
-                      title={downloadHints[item.id]}
-                      tabIndex={0}
-                    >
-                      <AlertIcon />
-                    </span>
-                  )}
-                  {item.language && <span className={styles.lang}>{item.language}</span>}
-                  {getSourceLabel(item.source) && (
-                    <span className={styles.sourceBadge} title={getSourceLabel(item.source) || ''}>
-                      {getSourceLabel(item.source)}
-                    </span>
-                  )}
-                  {item.source === 'subtitlenexus' && (
-                    <span className={styles.externalBadge} title="需前往來源網站下載">
-                      外部下載
-                    </span>
-                  )}
-                  {item.source === 'subtitlenexus' ? (
-                    <button
-                      type="button"
-                      className={styles.dlBtn}
-                      onClick={() => {
-                        trackCtaEvent({
-                          action: 'subtitles_open_source',
-                          label: `前往來源：${activeSearchKeyword || '未知關鍵字'}`,
-                          location: 'results',
-                        })
-                        openSourcePage(item)
-                      }}
-                    >
-                      前往來源
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className={styles.dlBtn}
-                      onClick={() => {
-                        trackCtaEvent({
-                          action: 'subtitles_download',
-                          label: `下載：${activeSearchKeyword || '未知關鍵字'}`,
-                          location: 'results',
-                        })
-                        download(item, activeSearchKeyword)
-                      }}
-                    >
-                      下載
-                    </button>
-                  )}
+                <li key={item.id} className={styles.resultItem}>
+                  <div className={styles.resultMain}>
+                    <span className={styles.itemName}>{item.release || item.file_name || item.id}</span>
+                    {downloadHints[item.id] && (
+                      <span
+                        className={styles.alertIcon}
+                        role="img"
+                        aria-label="下載提示"
+                        title={downloadHints[item.id]}
+                        tabIndex={0}
+                      >
+                        <AlertIcon />
+                      </span>
+                    )}
+                  </div>
+                  <div className={styles.resultMeta}>
+                    {item.language && <span className={styles.lang}>{item.language}</span>}
+                    {getSourceLabel(item.source) && (
+                      <span className={styles.sourceBadge} title={getSourceLabel(item.source) || ''}>
+                        {getSourceLabel(item.source)}
+                      </span>
+                    )}
+                    {item.source === 'subtitlenexus' && (
+                      <span className={styles.externalBadge} title="需前往來源網站下載">
+                        外部下載
+                      </span>
+                    )}
+                  </div>
+                  <div className={styles.resultActions}>
+                    {item.source === 'subtitlenexus' ? (
+                      <button
+                        type="button"
+                        className={styles.dlBtn}
+                        onClick={() => {
+                          trackCtaEvent({
+                            action: 'subtitles_open_source',
+                            label: `前往來源：${activeSearchKeyword || '未知關鍵字'}`,
+                            location: 'results',
+                          })
+                          openSourcePage(item)
+                        }}
+                      >
+                        前往來源
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className={styles.dlBtn}
+                        onClick={() => {
+                          trackCtaEvent({
+                            action: 'subtitles_download',
+                            label: `下載：${activeSearchKeyword || '未知關鍵字'}`,
+                            location: 'results',
+                          })
+                          download(item, activeSearchKeyword)
+                        }}
+                      >
+                        下載
+                      </button>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>

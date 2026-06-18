@@ -239,24 +239,47 @@
   padding: 0;
 }
 
-.list li {
+.resultItem {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.6rem 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.55rem;
+  padding: 0.85rem 0;
   border-bottom: 1px solid var(--border);
+}
+
+.resultMain {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.resultMeta {
+  display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.resultActions {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .itemName {
   flex: 1;
   min-width: 0;
   font-size: 0.95rem;
+  line-height: 1.45;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 .lang {
   font-size: 0.85rem;
   color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 .sourceBadge {
@@ -266,6 +289,8 @@
   border: 1px solid var(--border);
   border-radius: 4px;
   color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .externalBadge {
@@ -277,15 +302,20 @@
   border-radius: 999px;
   color: #92400e;
   font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .dlBtn {
-  padding: 0.35rem 0.75rem;
+  padding: 0.5rem 0.9rem;
+  min-height: 44px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   color: var(--text);
   border-radius: 6px;
   font-size: 0.9rem;
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 .dlBtn:hover {
@@ -349,4 +379,71 @@
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
+}
+
+@media (max-width: 640px) {
+  .card,
+  .historySection {
+    padding: 1rem;
+  }
+
+  .hint {
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+  }
+
+  .searchRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .btn {
+    width: 100%;
+  }
+
+  .resultActions {
+    width: 100%;
+  }
+
+  .resultActions .dlBtn {
+    width: 100%;
+    justify-content: center;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .pagination {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .pageInfo {
+    width: 100%;
+    text-align: center;
+    order: -1;
+    margin-bottom: 0.25rem;
+  }
+}
+
+@media (min-width: 641px) {
+  .resultItem {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .resultMain {
+    flex: 1 1 12rem;
+  }
+
+  .resultMeta {
+    flex: 0 1 auto;
+  }
+
+  .resultActions {
+    margin-left: auto;
+    flex: 0 0 auto;
+  }
 }
